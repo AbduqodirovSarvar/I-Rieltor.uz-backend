@@ -23,22 +23,15 @@ namespace Domain.Entities
         public ClientType Type { get; set; } = ClientType.NONE;
 
         /// <summary>
-        /// First name of the individual user.
+        /// FullName name of the individual user.
         /// Required for Individual clients.
         /// </summary>
-        public string FirstName { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
 
         /// <summary>
-        /// Last name of the individual user.
-        /// Required for Individual clients.
+        /// Username for login purposes.
         /// </summary>
-        public string LastName { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Optional middle name of the individual user.
-        /// Only applicable for Individual clients.
-        /// </summary>
-        public string? MiddleName { get; set; } = null;
+        public string? Login { get; set; } = null;
 
         /// <summary>
         /// Legal entity name. Required for Legal clients.
@@ -90,7 +83,7 @@ namespace Domain.Entities
         /// Foreign key to the UserRole entity.
         /// Determines the permissions and access level of the user.
         /// </summary>
-        public Guid UserRoleId { get; set; }
+        public Guid? UserRoleId { get; set; }
 
         /// <summary>
         /// Navigation property to the user's role.
