@@ -6,4 +6,9 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Folder Include="Data\Interceptors\" />
+    <Folder Include="Services\MessageBrokers\" />
+  </ItemGroup>
+
 </Project>
