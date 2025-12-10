@@ -1,10 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using MediatR;
+using Microsoft.AspNetCore.Mvc;
 
 namespace WebApi.Controllers.Abstractions
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class BaseController : ControllerBase
+    public class BaseController(IMediator mediator) : ControllerBase
     {
+        protected readonly IMediator _mediator = mediator;
     }
 }
