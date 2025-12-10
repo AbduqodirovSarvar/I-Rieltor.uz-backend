@@ -32,8 +32,8 @@ namespace Application.Services.EntityServices.Abstractions
 
         public virtual async Task<ResponseModel<TEntityViewModel>> CreateAsync(TCreateDto entityCreateDto, CancellationToken cancellationToken = default)
         {
-            string entityTypeName = typeof(TEntity).Name;
-            if (!await _permissionService.Check(entityTypeName, OperationType.CREATE, null))
+            string entityTypeName = typeof(TEntity).Name.ToUpper();
+            if (!await _permissionService.Check($"{OperationType.CREATE}_{entityTypeName}"))
                 throw new UnauthorizedAccessException("You do not have permission to create this entity.");
 
             var entity = _mapper.Map<TEntity>(entityCreateDto);
@@ -46,8 +46,8 @@ namespace Application.Services.EntityServices.Abstractions
 
         public virtual async Task<ResponseModel<TEntityViewModel>> UpdateAsync(TUpdateDto entityUpdateDto, CancellationToken cancellationToken = default)
         {
-            string entityTypeName = typeof(TEntity).Name;
-            if (!await _permissionService.Check(entityTypeName, OperationType.UPDATE))
+            string entityTypeName = typeof(TEntity).Name.ToUpper();
+            if (!await _permissionService.Check($"{OperationType.UPDATE}_{entityTypeName}"))
                 throw new UnauthorizedAccessException("You do not have permission to create this entity.");
 
             var entity = _mapper.Map<TEntity>(entityUpdateDto);
@@ -60,8 +60,8 @@ namespace Application.Services.EntityServices.Abstractions
 
         public virtual async Task<ResponseModel<bool>> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            string entityTypeName = typeof(TEntity).Name;
-            if (!await _permissionService.Check(entityTypeName, OperationType.DELETE))
+            string entityTypeName = typeof(TEntity).Name.ToUpper();
+            if (!await _permissionService.Check($"{OperationType.DELETE}_{entityTypeName}"))
                 throw new UnauthorizedAccessException("You do not have permission to create this entity.");
 
             var entity = await _repository.GetAsync(x => x.Id == id, cancellationToken)
@@ -72,8 +72,8 @@ namespace Application.Services.EntityServices.Abstractions
 
         public virtual async Task<ResponseModel<bool>> ExistsAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default)
         {
-            string entityTypeName = typeof(TEntity).Name;
-            if (!await _permissionService.Check(entityTypeName, OperationType.GET))
+            string entityTypeName = typeof(TEntity).Name.ToUpper();
+            if (!await _permissionService.Check($"{OperationType.READ}_{entityTypeName}"))
                 throw new UnauthorizedAccessException("You do not have permission to create this entity.");
 
             var entity = await _repository.GetAsync(predicate, cancellationToken);
@@ -82,8 +82,8 @@ namespace Application.Services.EntityServices.Abstractions
 
         public virtual async Task<ResponseModel<List<TEntityViewModel>>> GetAllAsync(Expression<Func<TEntity, bool>>? predicate = null, int pageIndex = 0, int pageSize = 10, CancellationToken cancellationToken = default)
         {
-            string entityTypeName = typeof(TEntity).Name;
-            if (!await _permissionService.Check(entityTypeName, OperationType.GET))
+            string entityTypeName = typeof(TEntity).Name.ToUpper();
+            if (!await _permissionService.Check($"{OperationType.READ}_{entityTypeName}"))
                 throw new UnauthorizedAccessException("You do not have permission to create this entity.");
 
             var (data, totalCount) = await _repository.GetPaginatedAsync(predicate, pageIndex, pageSize, null, cancellationToken);
@@ -93,8 +93,8 @@ namespace Application.Services.EntityServices.Abstractions
 
         public async Task<ResponseModel<TEntityViewModel?>> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            string entityTypeName = typeof(TEntity).Name;
-            if (!await _permissionService.Check(entityTypeName, OperationType.GET))
+            string entityTypeName = typeof(TEntity).Name.ToUpper();
+            if (!await _permissionService.Check($"{OperationType.READ}_{entityTypeName}"))
                 throw new UnauthorizedAccessException("You do not have permission to create this entity.");
 
             var entity = await _repository.GetByIdAsync(id, cancellationToken)
@@ -105,8 +105,8 @@ namespace Application.Services.EntityServices.Abstractions
 
         public virtual async Task<ResponseModel<TEntityViewModel?>> GetAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default)
         {
-            string entityTypeName = typeof(TEntity).Name;
-            if (!await _permissionService.Check(entityTypeName, OperationType.GET))
+            string entityTypeName = typeof(TEntity).Name.ToUpper();
+            if (!await _permissionService.Check($"{OperationType.READ}_{entityTypeName}"))
                 throw new UnauthorizedAccessException("You do not have permission to create this entity.");
 
             var entity = await _repository.GetAsync(predicate, cancellationToken)

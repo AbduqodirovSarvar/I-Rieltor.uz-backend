@@ -11,7 +11,7 @@ namespace Application.Interfaces.Auths
 {
     public interface IPermissionService
     {
-        Task<bool> Check(string entityName, OperationType operation, User? user = null);
-        string Get(string entityName, OperationType operation);
+        Task<bool> Check(string permission);
+        Task<bool> Check(string permission, User user);
     }
 }

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Persistance.Extentions
 {
-    internal class DepencyInjection
+    public static class DepencyInjection
     {
     }
 }

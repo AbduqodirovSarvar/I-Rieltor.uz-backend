@@ -10,7 +10,7 @@ namespace Domain.Enums
     {
         NONE = 0,
         CREATE = 1,
-        GET = 2,
+        READ = 2,
         UPDATE = 3,
         DELETE = 4,
     }
