@@ -4,9 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Application.Models.ViewModels.Auths
+namespace Application.Mappings
 {
-    internal class LoginViewModel
-    {
-    }
+    public class AssemblyMarker { }
 }

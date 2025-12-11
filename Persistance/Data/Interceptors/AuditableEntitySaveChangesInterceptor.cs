@@ -16,10 +16,6 @@ namespace Persistance.Data.Interceptors
     {
         private readonly IServiceProvider _serviceProvider = serviceProvider;
 
-        public AuditableEntitySaveChangesInterceptor()
-        {
-        }
-
         private ICurrentUserService? GetCurrentUserService()
         {
             return _serviceProvider.GetService<ICurrentUserService>();

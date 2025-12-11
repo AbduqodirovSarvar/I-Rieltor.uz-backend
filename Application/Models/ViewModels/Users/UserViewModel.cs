@@ -1,5 +1,5 @@
 ﻿using Application.Models.ViewModels.Abstractions;
-using Application.Models.ViewModels.UserRole;
+using Application.Models.ViewModels.UserRoles;
 using Domain.Behaviours;
 using Domain.Entities;
 using Domain.Enums;

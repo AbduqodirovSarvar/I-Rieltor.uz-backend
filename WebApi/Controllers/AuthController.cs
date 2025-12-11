@@ -1,4 +1,9 @@
-﻿using Application.Models.Dtos.Auths;
+﻿using Application.Features.Auths.Commands.Login;
+using Application.Features.Auths.Commands.LoginViaEimzo;
+using Application.Features.Auths.Commands.Register;
+using Application.Features.Auths.Commands.RegisterViaEimzo;
+using Application.Features.Auths.Commands.Reset;
+using Application.Features.Auths.Commands.ResetViaEimzo;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using WebApi.Controllers.Abstractions;
@@ -10,7 +15,7 @@ namespace WebApi.Controllers
     public class AuthController(IMediator mediator) : BaseController(mediator)
     {
         [HttpPost("sign-in")]
-        public async Task<IActionResult> SignIn([FromBody] LoginDto command)
+        public async Task<IActionResult> SignIn([FromBody] SignInCommand command)
         {
             if (command == null)
                 return BadRequest("Request cannot be null");
@@ -20,7 +25,7 @@ namespace WebApi.Controllers
         }
 
         [HttpPost("sign-in-via-eimzo")]
-        public async Task<IActionResult> SignInViaEimzo([FromBody] LoginViaEimzoDto command)
+        public async Task<IActionResult> SignInViaEimzo([FromBody] SignInViaEimzoCommand command)
         {
             if (command == null)
                 return BadRequest("Request cannot be null");
@@ -30,7 +35,7 @@ namespace WebApi.Controllers
         }
 
         [HttpPost("sign-up")]
-        public async Task<IActionResult> SignUp([FromBody] RegisterDto command)
+        public async Task<IActionResult> SignUp([FromBody] SignUpCommand command)
         {
             if (command == null)
                 return BadRequest("Request cannot be null");
@@ -40,7 +45,7 @@ namespace WebApi.Controllers
         }
 
         [HttpPost("sign-up-via-eimzo")]
-        public async Task<IActionResult> SignUpViaEimzo([FromBody] RegisterViaEimzoDto command)
+        public async Task<IActionResult> SignUpViaEimzo([FromBody] SignUpViaEimzoCommand command)
         {
             if (command == null)
                 return BadRequest("Request cannot be null");
@@ -50,7 +55,7 @@ namespace WebApi.Controllers
         }
 
         [HttpPost("reset-password")]
-        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto command)
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordCommand command)
         {
             if (command == null)
                 return BadRequest("Request cannot be null");
@@ -60,7 +65,7 @@ namespace WebApi.Controllers
         }
 
         [HttpPost("reset-password-via-eimzo")]
-        public async Task<IActionResult> ResetPasswordViaEimzo([FromBody] ResetPasswordByEImzoDto command)
+        public async Task<IActionResult> ResetPasswordViaEimzo([FromBody] ResetPasswordViaEimzoCommand command)
         {
             if (command == null)
                 return BadRequest("Request cannot be null");
