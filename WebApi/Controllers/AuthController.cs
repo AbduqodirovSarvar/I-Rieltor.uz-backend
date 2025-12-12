@@ -4,16 +4,19 @@ using Application.Features.Auths.Commands.Register;
 using Application.Features.Auths.Commands.RegisterViaEimzo;
 using Application.Features.Auths.Commands.Reset;
 using Application.Features.Auths.Commands.ResetViaEimzo;
+using Application.Interfaces.Auths;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using System.Threading.Tasks;
 using WebApi.Controllers.Abstractions;
 
 namespace WebApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class AuthController(IMediator mediator) : BaseController(mediator)
+    public class AuthController(IMediator mediator, IPermissionService permissionService) : BaseController(mediator)
     {
+        private readonly IPermissionService _permissionService = permissionService;
         [HttpPost("sign-in")]
         public async Task<IActionResult> SignIn([FromBody] SignInCommand command)
         {
@@ -81,6 +84,14 @@ namespace WebApi.Controllers
                 return BadRequest("Reflesh token cannot be null");
 
             var result = await _mediator.Send(refleshToken);
+            return Ok(result);
+        }
+
+        [HttpGet("all-permissions")]
+        public async Task<IActionResult> GetAllPermissions()
+        {
+            var result = await _permissionService.GetAllPermission();
+            Console.WriteLine(result);
             return Ok(result);
         }
     }

@@ -8,7 +8,6 @@ namespace Domain.Enums.Permissions
 {
     public enum UserPermission
     {
-        NONE,
         CREATE_USER,
         READ_USER,
         UPDATE_USER,

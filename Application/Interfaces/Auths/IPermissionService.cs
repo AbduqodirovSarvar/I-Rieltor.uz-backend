@@ -13,5 +13,6 @@ namespace Application.Interfaces.Auths
     {
         Task<bool> Check(string permission);
         Task<bool> Check(string permission, User user);
+        Task<IReadOnlyCollection<string>> GetAllPermission();
     }
 }

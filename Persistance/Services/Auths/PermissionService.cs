@@ -1,5 +1,6 @@
 ﻿using Application.Interfaces.Auths;
 using Application.Interfaces.EntityServices;
+using Application.Interfaces.Repositories;
 using Domain.Entities;
 using System;
 using System.Collections.Generic;
@@ -11,12 +12,12 @@ namespace Persistance.Services.Auths
 {
     public class PermissionService(
         ICurrentUserService currentUserService,
-        IUserRoleService userRoleService,
-        IUserRolePermissionService userRolePermissionService) : IPermissionService
+        IUserRoleRepository userRoleRepository,
+        IUserRolePermissionRepository userRolePermissionRepository) : IPermissionService
     {
-        private readonly IUserRolePermissionService _userRolePermissionService = userRolePermissionService;
+        private readonly IUserRolePermissionRepository _userRolePermissionRepository = userRolePermissionRepository;
         private readonly ICurrentUserService _currentUserService = currentUserService;
-        private readonly IUserRoleService _userRoleService = userRoleService;
+        private readonly IUserRoleRepository _userRoleRepository = userRoleRepository;
         public async Task<bool> Check(string permission)
         {
             var user = await _currentUserService.GetCurrentUserAsync()
@@ -25,11 +26,11 @@ namespace Persistance.Services.Auths
             if(user.UserRoleId == null)
                 throw new UnauthorizedAccessException("You don't have access for this action!");
 
-            var role = await _userRoleService.GetByIdAsync(user.UserRoleId.Value)
+            var role = await _userRoleRepository.GetByIdAsync(user.UserRoleId.Value)
                         ?? throw new UnauthorizedAccessException("You don't have access for this action!");
 
-            var result = await _userRolePermissionService.ExistsAsync(x => x.UserRoleId == user.UserRoleId && x.Permission == permission);
-            return result.Data;
+            var result = await _userRolePermissionRepository.AnyAsync(x => x.UserRoleId == user.UserRoleId && x.Permission == permission);
+            return result;
         }
 
         public async Task<bool> Check(string permission, User user)
@@ -40,11 +41,34 @@ namespace Persistance.Services.Auths
             if (user.UserRoleId == null)
                 throw new UnauthorizedAccessException("You don't have access for this action!");
 
-            var role = await _userRoleService.GetByIdAsync(user.UserRoleId.Value)
+            var role = await _userRoleRepository.GetByIdAsync(user.UserRoleId.Value)
                         ?? throw new UnauthorizedAccessException("You don't have access for this action!");
 
-            var result = await _userRolePermissionService.ExistsAsync(x => x.UserRoleId == user.UserRoleId && x.Permission == permission);
-            return result.Data;
+            var result = await _userRolePermissionRepository.AnyAsync(x => x.UserRoleId == user.UserRoleId && x.Permission == permission);
+            return result;
         }
+
+        public Task<IReadOnlyCollection<string>> GetAllPermission()
+        {
+            var permissionNamespace = "Domain.Enums.Permissions";
+
+            var domainAssembly = typeof(Domain.Enums.Permissions.UserPermission).Assembly;
+
+            var enumTypes = domainAssembly
+                .GetTypes()
+                .Where(t => t.IsEnum && t.Namespace == permissionNamespace)
+                .ToList();
+
+            var permissions = new List<string>();
+
+            foreach (var enumType in enumTypes)
+            {
+                var values = Enum.GetNames(enumType);
+                permissions.AddRange(values);
+            }
+
+            return Task.FromResult((IReadOnlyCollection<string>)permissions.AsReadOnly());
+        }
+
     }
 }

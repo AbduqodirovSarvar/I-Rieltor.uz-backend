@@ -2,7 +2,7 @@ using WebApi.Extentions;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.AdApiDepencies(builder.Configuration);
+builder.AdApiDepencies();
 
 var app = builder.Build();
 

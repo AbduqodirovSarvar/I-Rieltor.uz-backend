@@ -28,6 +28,7 @@ namespace Application.Extentions
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IUserRoleService, UserRoleService>();
             services.AddScoped<IUserRolePermissionService, UserRolePermissionService>();
+
             services.AddAutoMapper(cfg =>
             {
                 cfg.AddMaps(typeof(AssemblyMarker).Assembly);
