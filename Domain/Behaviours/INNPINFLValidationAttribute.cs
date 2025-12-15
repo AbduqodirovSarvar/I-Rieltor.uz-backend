@@ -36,17 +36,11 @@ namespace Domain.Behaviours
 
             string input = value.ToString()!;
 
-            // Individual client: PINFL must be 14 digits
-            if (client.Type == ClientType.INDIVIDUAL)
+            if (!Regex.IsMatch(input, @"^\d{9,14}$"))
             {
-                if (!Regex.IsMatch(input, @"^\d{14}$"))
-                    return new ValidationResult("PINFL must be exactly 14 digits for Individual clients.");
-            }
-            // Legal client: INN must be 9 digits
-            else if (client.Type == ClientType.LEGAL)
-            {
-                if (!Regex.IsMatch(input, @"^\d{9}$"))
-                    return new ValidationResult("INN must be exactly 9 digits for Legal clients.");
+                return new ValidationResult(
+                    "Value must contain only digits and be between 9 and 14 characters long."
+                );
             }
 
             // Validation successful

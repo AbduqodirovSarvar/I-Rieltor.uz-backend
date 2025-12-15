@@ -1,14 +1,16 @@
 ﻿using Application.Models.Dtos.Abstractions;
 using Application.Models.Requests.Abstractions;
 using MediatR;
-using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using WebApi.Filters.Attributes;
 
 namespace WebApi.Controllers.Abstractions
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class BaseEntityCrudController<TCreateCommand, 
+    [Authorize]
+    public abstract class BaseEntityCrudController<TCreateCommand, 
                                           TUpdateCommand,
                                           TDeleteCommand,
                                           TGetQuery,

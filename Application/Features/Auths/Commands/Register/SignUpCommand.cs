@@ -11,7 +11,8 @@ using System.Windows.Input;
 namespace Application.Features.Auths.Commands.Register
 {
     public record SignUpCommand
-        : RegisterDto, ICommand<ResponseModel<bool>>
+        : RegisterDto,
+        ICommand<ResponseModel<bool>>
     {
     }
 }

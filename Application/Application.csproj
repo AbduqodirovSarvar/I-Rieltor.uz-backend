@@ -11,8 +11,6 @@
     <Folder Include="Features\UserRolePermissions\Queries\" />
     <Folder Include="Features\UserRoles\Commands\" />
     <Folder Include="Features\UserRoles\Queries\" />
-    <Folder Include="Features\Users\Commands\" />
-    <Folder Include="Features\Users\Queries\" />
     <Folder Include="Interfaces\MessageBrokerServices\" />
   </ItemGroup>
 
