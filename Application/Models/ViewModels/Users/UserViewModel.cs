@@ -29,7 +29,6 @@ namespace Application.Models.ViewModels.Users
         public string? Address { get; set; } = null;
         [EmailAddress]
         public string Email { get; set; } = string.Empty;
-        public string PasswordHash { get; set; } = string.Empty;
         public Guid? UserRoleId { get; set; }
         public UserRoleViewModel? UserRole { get; set; }
     }

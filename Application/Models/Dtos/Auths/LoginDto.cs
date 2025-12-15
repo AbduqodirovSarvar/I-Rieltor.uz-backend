@@ -10,7 +10,7 @@ namespace Application.Models.Dtos.Auths
     public record LoginDto
     {
         /// <summary>
-        /// The username or email address used for login.
+        /// The username or email address or innpinfl used for login.
         /// This field is required and must match an existing user account.
         /// </summary>
         [Required(ErrorMessage = "Login is required.")]

@@ -1,4 +1,7 @@
-﻿using AutoMapper;
+﻿using Application.Models.Dtos.UserRolePermissions;
+using Application.Models.ViewModels.UserRolePermisions;
+using AutoMapper;
+using Domain.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,7 +14,9 @@ namespace Application.Mappings
     {
         public UserRolePermissionMappingProfile()
         {
-            // Create your mappings here
+            CreateMap<UserRolePermission, UserRolePermissionViewModel>().ReverseMap();
+            CreateMap<CreateUserRolePermissionDto, UserRolePermission>().ReverseMap();
+            CreateMap<UpdateUserRolePermissionDto, UserRolePermission>().ReverseMap();
         }
     }
 }

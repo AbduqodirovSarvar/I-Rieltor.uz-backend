@@ -82,7 +82,22 @@ namespace Persistance.Extentions
                         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretWord))
                     };
                 });
-            services.AddAuthorization();
+
+
+
+            services.AddAuthorization(options =>
+            {
+                var sp = services.BuildServiceProvider();
+                var permissionService = sp.GetRequiredService<IPermissionService>();
+                var allPermissions = permissionService.GetAllPermission().Result;
+
+                foreach (var perm in allPermissions)
+                {
+                    Console.WriteLine($"Adding authorization policy for permission: {perm}");
+                    options.AddPolicy(perm, policy =>
+                        policy.RequireClaim("permission", perm));
+                }
+            });
             return services;
         }
     }

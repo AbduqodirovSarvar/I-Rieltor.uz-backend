@@ -26,8 +26,8 @@ namespace WebApi.Extentions
                 options.SwaggerDoc("v1", new OpenApiInfo
                 {
                     Version = "v1",
-                    Title = "Family Tree website's Api",
-                    Description = "An ASP.NET Core Web API for FamilyTree website Api items"
+                    Title = "I-Rieltor website's Api",
+                    Description = "An ASP.NET Core Web API for I-Rieltor.uz website Api items"
                 });
 
                 options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme()

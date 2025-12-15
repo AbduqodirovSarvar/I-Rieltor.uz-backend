@@ -5,7 +5,9 @@ using Application.Features.Auths.Commands.RegisterViaEimzo;
 using Application.Features.Auths.Commands.Reset;
 using Application.Features.Auths.Commands.ResetViaEimzo;
 using Application.Interfaces.Auths;
+using Domain.Enums.Permissions;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 using WebApi.Controllers.Abstractions;
@@ -87,11 +89,11 @@ namespace WebApi.Controllers
             return Ok(result);
         }
 
+        [Authorize(Policy = nameof(UserPermission.READ_USER))]
         [HttpGet("all-permissions")]
         public async Task<IActionResult> GetAllPermissions()
         {
             var result = await _permissionService.GetAllPermission();
-            Console.WriteLine(result);
             return Ok(result);
         }
     }

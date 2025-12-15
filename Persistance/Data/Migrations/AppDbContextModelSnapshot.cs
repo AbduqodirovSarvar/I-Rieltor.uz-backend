@@ -180,8 +180,9 @@ namespace Persistance.Data.Migrations
             modelBuilder.Entity("Domain.Entities.User", b =>
                 {
                     b.HasOne("Domain.Entities.UserRole", "UserRole")
-                        .WithMany()
-                        .HasForeignKey("UserRoleId");
+                        .WithMany("Users")
+                        .HasForeignKey("UserRoleId")
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.Navigation("UserRole");
                 });
@@ -189,12 +190,19 @@ namespace Persistance.Data.Migrations
             modelBuilder.Entity("Domain.Entities.UserRolePermission", b =>
                 {
                     b.HasOne("Domain.Entities.UserRole", "UserRole")
-                        .WithMany()
+                        .WithMany("Permissions")
                         .HasForeignKey("UserRoleId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("UserRole");
+                });
+
+            modelBuilder.Entity("Domain.Entities.UserRole", b =>
+                {
+                    b.Navigation("Permissions");
+
+                    b.Navigation("Users");
                 });
 #pragma warning restore 612, 618
         }

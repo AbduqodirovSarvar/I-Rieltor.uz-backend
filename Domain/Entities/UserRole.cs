@@ -11,6 +11,8 @@ namespace Domain.Entities
     {
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; } = null;
+
+        public ICollection<User> Users = [];
         public ICollection<UserRolePermission> Permissions = [];
     }
 }

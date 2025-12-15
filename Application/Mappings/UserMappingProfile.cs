@@ -1,4 +1,7 @@
-﻿using AutoMapper;
+﻿using Application.Models.Dtos.Users;
+using Application.Models.ViewModels.Users;
+using AutoMapper;
+using Domain.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,7 +14,9 @@ namespace Application.Mappings
     {
         public UserMappingProfile()
         {
-
+            CreateMap<User, UserViewModel>().ReverseMap();
+            CreateMap<CreateUserDto, User>().ReverseMap();
+            CreateMap<UpdateUserDto, User>().ReverseMap();
         }
     }
 }

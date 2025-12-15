@@ -1,6 +1,7 @@
 ﻿using Domain.Entities;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Persistance.Data.EntityTypeConfigurations.Abstractions;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,6 +16,10 @@ namespace Persistance.Data.EntityTypeConfigurations
         public override void Configure(EntityTypeBuilder<User> builder)
         {
             base.Configure(builder);
+            builder.HasOne(x => x.UserRole)
+                    .WithMany(x => x.Users)
+                    .HasForeignKey(x => x.UserRoleId)
+                    .OnDelete(DeleteBehavior.NoAction);
             builder.Property(u => u.Login)
                    .HasMaxLength(50);
             builder.Property(u => u.LegalName)
