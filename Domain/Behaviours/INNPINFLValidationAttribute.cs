@@ -25,14 +25,8 @@ namespace Domain.Behaviours
         /// </returns>
         protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
         {
-            // Get the User instance being validated
-            var client = (User)validationContext.ObjectInstance;
-
-            // If the value is null or empty, skip validation (Required can be handled separately)
             if (string.IsNullOrWhiteSpace(value?.ToString()))
-            {
                 return ValidationResult.Success;
-            }
 
             string input = value.ToString()!;
 
@@ -43,7 +37,6 @@ namespace Domain.Behaviours
                 );
             }
 
-            // Validation successful
             return ValidationResult.Success;
         }
     }

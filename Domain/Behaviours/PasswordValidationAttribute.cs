@@ -31,13 +31,13 @@ namespace Domain.Behaviours
         /// <returns>True if valid; otherwise, false.</returns>
         public override bool IsValid(object? value)
         {
-            if (value == null || value is not string password)
-            {
-                return false;
-            }
+            if (string.IsNullOrWhiteSpace(value?.ToString()))
+                return true;
+
+            string input = value.ToString()!;
 
             const string passwordPattern = @"^(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z]).{8,}$";
-            return Regex.IsMatch(password, passwordPattern);
+            return Regex.IsMatch(input, passwordPattern);
         }
     }
 }

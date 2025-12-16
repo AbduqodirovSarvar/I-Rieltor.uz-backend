@@ -27,13 +27,13 @@ namespace Domain.Behaviours
         /// <returns>True if valid; otherwise, false.</returns>
         public override bool IsValid(object? value)
         {
-            if (value == null || value is not string phoneNumber)
-            {
-                return false;
-            }
+            if (string.IsNullOrWhiteSpace(value?.ToString()))
+                return true;
+
+            string input = value.ToString()!;
 
             const string phonePattern = @"^\+\d{1,3}(\d{10,12})?$";
-            return Regex.IsMatch(phoneNumber, phonePattern);
+            return Regex.IsMatch(input, phonePattern);
         }
     }
 }

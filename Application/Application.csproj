@@ -7,10 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Features\UserRolePermissions\Commands\" />
-    <Folder Include="Features\UserRolePermissions\Queries\" />
-    <Folder Include="Features\UserRoles\Commands\" />
-    <Folder Include="Features\UserRoles\Queries\" />
+    <Folder Include="Features\UserRolePermissions\Commands\CreateList\" />
+    <Folder Include="Features\UserRolePermissions\Commands\Update\" />
     <Folder Include="Interfaces\MessageBrokerServices\" />
   </ItemGroup>
 

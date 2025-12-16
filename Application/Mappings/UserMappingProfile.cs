@@ -15,8 +15,12 @@ namespace Application.Mappings
         public UserMappingProfile()
         {
             CreateMap<User, UserViewModel>().ReverseMap();
-            CreateMap<CreateUserDto, User>().ReverseMap();
-            CreateMap<UpdateUserDto, User>().ReverseMap();
+            CreateMap<CreateUserDto, User>()
+                .ForMember(x => x.PasswordHash, opt => opt.Ignore())
+                .ReverseMap();
+            CreateMap<UpdateUserDto, User>()
+                .ForMember(x => x.PasswordHash, opt => opt.Ignore())
+                .ReverseMap();
         }
     }
 }

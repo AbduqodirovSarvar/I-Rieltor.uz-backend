@@ -31,7 +31,7 @@ namespace Application.Extentions
                 if (property == null) continue;
 
                 Expression left = Expression.Property(param, property);
-                object? typedValue = Convert.ChangeType(valueString, Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType);
+                object typedValue = ConvertToPropertyType(valueString, property.PropertyType);
                 Expression right = Expression.Constant(typedValue, property.PropertyType);
 
                 Expression? condition = operation.ToLower() switch
@@ -54,5 +54,19 @@ namespace Application.Extentions
 
             return Expression.Lambda<Func<T, bool>>(combined, param);
         }
+
+        private static object ConvertToPropertyType(string value, Type targetType)
+        {
+            var actualType = Nullable.GetUnderlyingType(targetType) ?? targetType;
+
+            if (actualType == typeof(Guid))
+                return Guid.Parse(value);
+
+            if (actualType.IsEnum)
+                return Enum.Parse(actualType, value, ignoreCase: true);
+
+            return Convert.ChangeType(value, actualType);
+        }
+
     }
 }

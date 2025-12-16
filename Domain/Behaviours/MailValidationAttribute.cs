@@ -27,13 +27,13 @@ namespace Domain.Behaviours
         /// <returns>True if valid; otherwise, false.</returns>
         public override bool IsValid(object? value)
         {
-            if (value == null || value is not string email)
-            {
-                return false;
-            }
+            if (string.IsNullOrWhiteSpace(value?.ToString()))
+                return true;
+            
+            string input = value.ToString()!;
 
             const string emailPattern = @"^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$";
-            return Regex.IsMatch(email, emailPattern);
+            return Regex.IsMatch(input, emailPattern);
         }
     }
 }

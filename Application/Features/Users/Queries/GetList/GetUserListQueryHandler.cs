@@ -3,6 +3,7 @@ using Application.Features.Abstractions.Queries.Interfaces;
 using Application.Interfaces.EntityServices;
 using Application.Models.Results;
 using Application.Models.ViewModels.Users;
+using Domain.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,7 +20,7 @@ namespace Application.Features.Users.Queries.GetList
         private readonly IUserService _userService = userService;
         public async Task<ResponseModel<List<UserViewModel>>> Handle(GetUserListQuery request, CancellationToken cancellationToken)
         {
-            Expression<Func<Domain.Entities.User, bool>>? predicate = null;
+            Expression<Func<User, bool>>? predicate = null;
             if (request.Filters != null && request.Filters.Any())
             {
                 predicate = request.Filters.BuildPredicate<Domain.Entities.User>();

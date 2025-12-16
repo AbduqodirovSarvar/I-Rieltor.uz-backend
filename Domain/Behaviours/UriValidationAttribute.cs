@@ -26,12 +26,12 @@ namespace Domain.Behaviours
         /// <returns>True if valid; otherwise, false.</returns>
         public override bool IsValid(object? value)
         {
-            if (value == null || value is not string url)
-            {
-                return false;
-            }
+            if (string.IsNullOrWhiteSpace(value?.ToString()))
+                return true;
 
-            return Uri.TryCreate(url, UriKind.Absolute, out _);
+            string input = value.ToString()!;
+
+            return Uri.TryCreate(input, UriKind.Absolute, out _);
         }
     }
 }
