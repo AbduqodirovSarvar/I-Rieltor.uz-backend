@@ -40,6 +40,11 @@ namespace Persistance.Extentions
             services.AddSingleton<IHashService, HashService>();
             services.AddSingleton<ITokenService, TokenService>();
             services.AddScoped<IPermissionService, PermissionService>();
+            services.AddHttpClient<IEimzoService, EimzoService>(client =>
+            {
+                client.BaseAddress = new Uri(configuration["Eimzo:BaseUrl"]!);
+            });
+
             services.AddScoped<IFileService>(provider =>
             {
                 var env = provider.GetRequiredService<IWebHostEnvironment>();

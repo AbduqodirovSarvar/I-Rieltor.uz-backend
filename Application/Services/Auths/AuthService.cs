@@ -6,6 +6,7 @@ using Application.Models.Dtos.Auths;
 using Application.Models.ViewModels.Auths;
 using AutoMapper;
 using Domain.Entities;
+using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -17,20 +18,22 @@ using System.Threading.Tasks;
 namespace Application.Services.Auths
 {
     public class AuthService(
-        IUserService userService,
         ITokenService tokenService,
         IEmailService emailService,
         IHashService hashService,
         IUserRepository userRepository,
-        IMapper mapper
+        IMapper mapper,
+        IEimzoService eimzoService,
+        IUserRoleService userRoleService
         ) : IAuthService
     {
-        private readonly IUserService _userService = userService;
         private readonly ITokenService _tokenService = tokenService;
         private readonly IEmailService _emailService = emailService;
         private readonly IHashService _hashService = hashService;
         private readonly IUserRepository _userRepository = userRepository;
         private readonly IMapper _mapper = mapper;
+        private readonly IEimzoService _eimzoService = eimzoService;
+        private readonly IUserRoleService _userRoleService = userRoleService;
         public async Task<TokenViewModel> LoginAsync(LoginDto loginDto, CancellationToken cancellationToken)
         {
             var user = await _userRepository
@@ -85,9 +88,41 @@ namespace Application.Services.Auths
             return await _userRepository.CreateAsync(user, cancellationToken) != null;
         }
 
-        public Task<TokenViewModel> LoginViaEimzoAsync(LoginViaEimzoDto loginDto, CancellationToken cancellationToken)
+        public async Task<TokenViewModel> LoginViaEimzoAsync(LoginViaEimzoDto loginDto, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            var verifyResult = await _eimzoService.VerifyAsync(loginDto.SignedData, cancellationToken);
+
+            if (!verifyResult.IsValid)
+                throw new UnauthorizedAccessException("Invalid E-Imzo signature.");
+
+            var user = await _userRepository
+                                    .Query(x =>
+                                        x.INNPINFL == verifyResult.Pinfl ||
+                                        x.INNPINFL == verifyResult.Inn,
+                                        cancellationToken)
+                                    .Include(x => x.UserRole)
+                                        .ThenInclude(x => x.Permissions)
+                                    .FirstOrDefaultAsync(cancellationToken)
+                                    ?? throw new UnauthorizedAccessException("User not registered.");
+
+            var claims = new List<Claim>
+            {
+                new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new(ClaimTypes.Role, user.UserRole?.Name?.ToString() ?? "NONE")
+            };
+
+            user.UserRole?.Permissions?.ToList().ForEach(permission =>
+            {
+                claims.Add(new Claim("permission", permission.Permission.ToString()));
+            });
+            var accessToken = _tokenService.GenerateToken([.. claims]);
+
+            return new TokenViewModel
+            {
+                AccessToken = accessToken,
+                TokenType = "Bearer",
+                UserId = user.Id.ToString()
+            };
         }
 
         public Task<bool> LogOutAsync(string token, CancellationToken cancellationToken)
@@ -100,9 +135,42 @@ namespace Application.Services.Auths
             throw new NotImplementedException();
         }
 
-        public Task<bool> RegisterViaEimzoAsync(RegisterViaEimzoDto registerDto, CancellationToken cancellationToken)
+        public async Task<bool> RegisterViaEimzoAsync(RegisterViaEimzoDto registerDto, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            var verifyResult = await _eimzoService.VerifyAsync(
+                registerDto.SignedData,
+                cancellationToken);
+
+            if (!verifyResult.IsValid)
+                throw new UnauthorizedAccessException("Invalid E-Imzo signature.");
+
+            var userExists = await _userRepository.AnyAsync(
+                x => x.INNPINFL == verifyResult.Pinfl ||
+                     x.INNPINFL == verifyResult.Inn,
+                cancellationToken);
+
+            if (userExists)
+                throw new InvalidOperationException("User already registered.");
+
+            var user = new User();
+            if(!string.IsNullOrEmpty(verifyResult.Pinfl))
+{
+                user.Type = ClientType.INDIVIDUAL;
+                user.INNPINFL = verifyResult.Pinfl;
+                user.FullName = $"{verifyResult.LastName} {verifyResult.FirstName}";
+            }
+            else {
+                user.Type = ClientType.LEGAL;
+                user.INNPINFL = verifyResult.Inn;
+                user.LegalName = verifyResult.LegalName;
+                user.FullName = verifyResult.LegalName!;
+            }
+
+            var defaultRoleResult = await _userRoleService.GetAsync(x => x.Name == "DEFAULT_USER", cancellationToken);
+
+            user.UserRoleId = defaultRoleResult.Data?.Id;
+
+            return await _userRepository.CreateAsync(user, cancellationToken) != null;
         }
 
         public Task<bool> ResetAsync(ResetPasswordDto resetPasswordDto, CancellationToken cancellationToken)

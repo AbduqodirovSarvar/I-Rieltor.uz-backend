@@ -32,23 +32,38 @@ namespace Persistance.Data.Seeds
 
         private static async Task<UserRole> SeedRolesAsync(AppDbContext context)
         {
-            var role = await context.UserRoles
+            var defaultRole = await context.UserRoles
+                .FirstOrDefaultAsync(x => x.Name == "DEFAULT_USER");
+
+            if (defaultRole == null)
+            {
+                defaultRole = new UserRole
+                {
+                    Name = "DEFAULT_USER",
+                    Description = "Default role for any user"
+                };
+
+                await context.UserRoles.AddAsync(defaultRole);
+            }
+
+            var superAdminRole = await context.UserRoles
                 .FirstOrDefaultAsync(x => x.Name == "SUPER_ADMIN");
 
-            if (role != null)
-                return role;
-
-            role = new UserRole()
+            if (superAdminRole == null)
             {
-                Name = "SUPER_ADMIN",
-                Description = "Super Administrator with full permissions"
-            };
+                superAdminRole = new UserRole
+                {
+                    Name = "SUPER_ADMIN",
+                    Description = "Super Administrator with full permissions"
+                };
 
-            await context.UserRoles.AddAsync(role);
+                await context.UserRoles.AddAsync(superAdminRole);
+            }
+
             await context.SaveChangesAsync();
-
-            return role;
+            return superAdminRole;
         }
+
 
         private static async Task SeedPermissionsAsync(
             AppDbContext context,
