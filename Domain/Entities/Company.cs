@@ -12,6 +12,8 @@ namespace Domain.Entities
     public class Company : AudiTableEntity
     {
         public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string? Mission { get; set; }
         public string Address { get; set; } = string.Empty;
         [Url]
         public string Location { get; set; } = string.Empty;
@@ -23,5 +25,8 @@ namespace Domain.Entities
         public string Email { get; set; } = string.Empty;
         public Guid? LogoFileId { get; set; }
         public UploadedFile? LogoFile { get; set; } = null;
+        public decimal? Latitude { get; set; }
+        public decimal? Longitude { get; set; }
+
     }
 }

@@ -21,6 +21,7 @@ namespace Persistance.Data
         public virtual DbSet<UserRolePermission> UserRolePermissions { get; set; }
         public virtual DbSet<UploadedFile> UploadedFiles { get; set; }
         public virtual DbSet<Slide> Slides { get; set; }
+        public virtual DbSet<Company> Companies { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

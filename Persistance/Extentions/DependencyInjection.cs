@@ -39,6 +39,7 @@ namespace Persistance.Extentions
             services.AddScoped<IUserRolePermissionRepository, UserRolePermissionRepository>();
             services.AddScoped<IUploadedFileRepository, UploadedFileRepository>();
             services.AddScoped<ISlideRepository, SlideRepository>();
+            services.AddScoped<ICompanyRepository, CompanyRepository>();
             services.AddSingleton<IHashService, HashService>();
             services.AddSingleton<ITokenService, TokenService>();
             services.AddScoped<IPermissionService, PermissionService>();

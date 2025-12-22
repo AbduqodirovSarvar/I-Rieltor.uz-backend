@@ -7,9 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Folder Include="Features\Company\Queries\GetList\" />
     <Folder Include="Features\UserRolePermissions\Commands\CreateList\" />
     <Folder Include="Features\UserRolePermissions\Commands\Update\" />
     <Folder Include="Interfaces\MessageBrokerServices\" />
+    <Folder Include="Mappings\Новая папка\" />
   </ItemGroup>
 
   <ItemGroup>
