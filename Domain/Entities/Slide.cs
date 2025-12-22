@@ -14,5 +14,7 @@ namespace Domain.Entities
         public string Content { get; set; } = string.Empty;
         public Guid UploadedFileId { get; set; }
         public UploadedFile? UploadedFile { get; set; } = null;
+        public int Order { get; set; }
+        public int DurationMs { get; set; } = 3000;
     }
 }

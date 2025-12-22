@@ -1,5 +1,6 @@
 ﻿using Application.Interfaces.Auths;
 using Application.Interfaces.EntityServices;
+using Application.Interfaces.Repositories;
 using Application.Interfaces.Repositories.Abstractions;
 using Application.Models.Dtos.UserRolePermissions;
 using Application.Models.ViewModels.UserRolePermisions;
@@ -14,7 +15,8 @@ using System.Threading.Tasks;
 
 namespace Application.Services.EntityServices
 {
-    public class UserRolePermissionService(IGenericRepository<UserRolePermission> repository,
+    public class UserRolePermissionService(
+                           IUserRolePermissionRepository repository,
                            IPermissionService permissionService,
                            IMapper mapper)
         : GenericEntityService<UserRolePermission,

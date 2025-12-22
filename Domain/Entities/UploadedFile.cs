@@ -19,5 +19,7 @@ namespace Domain.Entities
         public long Size { get; set; }
         public string? Description { get; set; } = null;
         public string? Alt { get; set; } = null;
+        public string EntityName { get; set; } = string.Empty;
+        public Guid? EntityId { get; set; }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using Application.Features.Abstractions.Queries.Interfaces;
+using Application.Interfaces.EntityServices;
 using Application.Interfaces.Files;
 using Application.Models.Results;
 using Application.Models.ViewModels.UploadedFiles;
@@ -11,12 +12,13 @@ using System.Threading.Tasks;
 namespace Application.Features.UploadedFiles.Queries.GetOne
 {
     public class GetOneUploadedFileQueryHandler(
-        IFileService fileService)
-        : IQueryHandler<GetOneUploadedFileQuery, ResponseModel<UploadedFileViewModel>>
+        IUploadedFileService uploadedFileService)
+        : IQueryHandler<GetOneUploadedFileQuery, ResponseModel<UploadedFileViewModel?>>
     {
-        public Task<ResponseModel<UploadedFileViewModel>> Handle(GetOneUploadedFileQuery request, CancellationToken cancellationToken)
+        private readonly IUploadedFileService _uploadedFileService = uploadedFileService;
+        public async Task<ResponseModel<UploadedFileViewModel?>> Handle(GetOneUploadedFileQuery request, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            return await _uploadedFileService.GetByIdAsync(request.Id, cancellationToken);
         }
     }
 }

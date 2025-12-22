@@ -55,7 +55,7 @@ namespace Persistance.Services.Files
             {
                 Id = Guid.NewGuid(),
                 Name = uniqueName,
-                Path = $"/uploads/{uniqueName}",
+                Path = category != null ? $"/uploads/{category}/{uniqueName}" : $"/uploads/{uniqueName}",
                 Type = GetMimeType(extension),
                 Size = file.Length,
                 CreatedAt = DateTime.UtcNow
@@ -91,8 +91,6 @@ namespace Persistance.Services.Files
             File.Move(sourcePath, destinationPath);
             await Task.CompletedTask;
         }
-
-
 
         private static FileMimeType GetMimeType(string extension)
         {

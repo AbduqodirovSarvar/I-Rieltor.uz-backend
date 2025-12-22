@@ -1,6 +1,7 @@
 ﻿using Application.Models.Dtos.Abstractions;
 using Domain.Behaviours;
 using Domain.Enums;
+using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,13 +13,10 @@ namespace Application.Models.Dtos.UploadedFiles
     public record CreateUploadedFileDto
         : BaseCreateDto
     {
-        public string Name { get; set; } = string.Empty;
-        public string Path { get; set; } = string.Empty;
-        [UriValidation]
-        public string Url { get; set; } = string.Empty;
-        public FileMimeType Type { get; set; } = FileMimeType.Unknown;
-        public long Size { get; set; }
+        public IFormFile File { get; set; } = null!;
         public string? Description { get; set; } = null;
         public string? Alt { get; set; } = null;
+        public string EntityName { get; set; } = string.Empty;
+        public Guid? EntityId { get; set; }
     }
 }

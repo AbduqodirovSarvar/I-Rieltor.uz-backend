@@ -15,7 +15,8 @@ using System.Threading.Tasks;
 
 namespace Application.Services.EntityServices
 {
-    public class UserService(IGenericRepository<User> repository, 
+    public class UserService(
+                           IUserRepository repository, 
                            IPermissionService permissionService, 
                            IMapper mapper)
         : GenericEntityService<User, 

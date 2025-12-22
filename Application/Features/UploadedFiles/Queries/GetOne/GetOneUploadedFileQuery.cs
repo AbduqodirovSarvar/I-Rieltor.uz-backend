@@ -12,7 +12,7 @@ namespace Application.Features.UploadedFiles.Queries.GetOne
 {
     public record GetOneUploadedFileQuery
         : BaseGetOneQuery,
-        IQuery<ResponseModel<UploadedFileViewModel>>
+        IQuery<ResponseModel<UploadedFileViewModel?>>
     {
     }
 }

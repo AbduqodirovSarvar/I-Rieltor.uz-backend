@@ -37,6 +37,8 @@ namespace Persistance.Extentions
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IUserRoleRepository, UserRoleRepository>();
             services.AddScoped<IUserRolePermissionRepository, UserRolePermissionRepository>();
+            services.AddScoped<IUploadedFileRepository, UploadedFileRepository>();
+            services.AddScoped<ISlideRepository, SlideRepository>();
             services.AddSingleton<IHashService, HashService>();
             services.AddSingleton<ITokenService, TokenService>();
             services.AddScoped<IPermissionService, PermissionService>();
@@ -98,9 +100,7 @@ namespace Persistance.Extentions
 
                 foreach (var perm in allPermissions)
                 {
-                    Console.WriteLine($"Adding authorization policy for permission: {perm}");
-                    options.AddPolicy(perm, policy =>
-                        policy.RequireClaim("permission", perm));
+                    options.AddPolicy(perm, policy => policy.RequireClaim("permission", perm));
                 }
             });
             return services;

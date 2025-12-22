@@ -4,6 +4,7 @@ using Application.Features.UserRolePermissions.Queries.GetList;
 using Application.Features.UserRolePermissions.Queries.GetOne;
 using Application.Interfaces.Auths;
 using Application.Models.Dtos.UserRolePermissions;
+using Domain.Enums.Actions;
 using Domain.Enums.Permissions;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -23,14 +24,14 @@ namespace WebApi.Controllers
     {
         private readonly IPermissionService _permissionService = permissionService;
 
-        [Authorize(Policy = nameof(UserRolePermissionCrudPermission.CREATE_USERROLEPERMISSION))]
+        [Authorize(Policy = nameof(UserRolePermissionActions.CREATE_USERROLEPERMISSION))]
         [HttpPost]
         public override async Task<IActionResult> Post([FromForm] CreateUserRolePermissionCommand command)
         {
             return await base.Post(command);
         }
 
-        [Authorize(Policy = nameof(UserRolePermissionCrudPermission.UPDATE_USERROLEPERMISSION))]
+        [Authorize(Policy = nameof(UserRolePermissionActions.UPDATE_USERROLEPERMISSION))]
         [HttpPut]
         public override async Task<IActionResult> Put([FromForm] UpdateUserRolePermissionDto command)
         {
@@ -38,28 +39,28 @@ namespace WebApi.Controllers
             return BadRequest("Not implemented yet.");
         }
 
-        [Authorize(Policy = nameof(UserRolePermissionCrudPermission.DELETE_USERROLEPERMISSION))]
+        [Authorize(Policy = nameof(UserRolePermissionActions.DELETE_USERROLEPERMISSION))]
         [HttpDelete]
         public override async Task<IActionResult> Delete(DeleteUserRolePermissionCommand command)
         {
             return await base.Delete(command);
         }
 
-        [Authorize(Policy = nameof(UserRolePermissionCrudPermission.READ_USERROLEPERMISSION))]
+        [Authorize(Policy = nameof(UserRolePermissionActions.READ_USERROLEPERMISSION))]
         [HttpGet]
         public override async Task<IActionResult> Get([FromQuery] GetOneUserRolePermissionQuery request)
         {
             return await base.Get(request);
         }
 
-        [Authorize(Policy = nameof(UserRolePermissionCrudPermission.READ_USERROLEPERMISSION))]
+        [Authorize(Policy = nameof(UserRolePermissionActions.READ_USERROLEPERMISSION))]
         [HttpGet("list")]
         public override async Task<IActionResult> GetAll([FromQuery] GetUserRolePermissionListQuery request)
         {
             return await base.GetAll(request);
         }
 
-        [Authorize(Policy = nameof(UserRolePermissionCrudPermission.READ_USERROLEPERMISSION))]
+        [Authorize(Policy = nameof(UserRolePermissionActions.READ_USERROLEPERMISSION))]
         [HttpGet("all-permissions")]
         public async Task<IActionResult> GetAllPermissions()
         {

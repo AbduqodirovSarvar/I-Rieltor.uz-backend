@@ -91,7 +91,7 @@ namespace Application.Services.EntityServices.Abstractions
             return ResponseModel<List<TEntityViewModel>>.Ok(_mapper.Map<List<TEntityViewModel>>(data), pageIndex, pageSize, totalCount);
         }
 
-        public async Task<ResponseModel<TEntityViewModel?>> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        public virtual async Task<ResponseModel<TEntityViewModel?>> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
             string entityTypeName = typeof(TEntity).Name.ToUpper();
             if (!await _permissionService.Check($"{OperationType.READ}_{entityTypeName}"))

@@ -18,6 +18,8 @@ namespace Application.Models.ViewModels.UploadedFiles
         public long Size { get; init; }
         public string? Description { get; init; }
         public string? Alt { get; init; }
-        public byte[]? Content { get; init; }
+        public string EntityName { get; init; } = string.Empty;
+        public Guid? EntityId { get; init; }
+        public byte[]? Content { get; set; }
     }
 }

@@ -28,6 +28,8 @@ namespace Application.Extentions
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IUserRoleService, UserRoleService>();
             services.AddScoped<IUserRolePermissionService, UserRolePermissionService>();
+            services.AddScoped<IUploadedFileService, UploadedFileService>();
+            services.AddScoped<ISlideService, SlideService>();
 
             services.AddAutoMapper(cfg =>
             {

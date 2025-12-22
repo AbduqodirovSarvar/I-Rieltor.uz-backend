@@ -23,7 +23,7 @@ namespace Application.Features.Users.Queries.GetList
             Expression<Func<User, bool>>? predicate = null;
             if (request.Filters != null && request.Filters.Any())
             {
-                predicate = request.Filters.BuildPredicate<Domain.Entities.User>();
+                predicate = request.Filters.BuildPredicate<User>();
             }
             return await _userService.GetAllAsync(predicate, request.PageIndex, request.PageSize, cancellationToken);
         }

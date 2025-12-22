@@ -50,9 +50,9 @@ namespace Persistance.Services.Auths
 
         public Task<IReadOnlyCollection<string>> GetAllPermission()
         {
-            var permissionNamespace = "Domain.Enums.Permissions";
+            var permissionNamespace = "Domain.Enums.Actions";
 
-            var domainAssembly = typeof(Domain.Enums.Permissions.UserPermission).Assembly;
+            var domainAssembly = typeof(Domain.Enums.Actions.BaseActions).Assembly;
 
             var enumTypes = domainAssembly
                 .GetTypes()
