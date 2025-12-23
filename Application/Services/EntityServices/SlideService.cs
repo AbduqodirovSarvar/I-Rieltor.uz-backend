@@ -38,19 +38,16 @@ namespace Application.Services.EntityServices
 
             var entity = _mapper.Map<Slide>(entityCreateDto);
 
-            var file = await _uploadedFileService.CreateAsync(new CreateUploadedFileDto()
+            var file = (await _uploadedFileService.CreateAsync(new CreateUploadedFileDto()
             {
                 File = entityCreateDto.File,
                 Description = entityCreateDto.Content,
                 Alt = entityCreateDto.Title,
                 EntityName = entityTypeName.ToLower()
-            }, cancellationToken);
+            }, cancellationToken)).Data ?? throw new InvalidOperationException("Failed to create entity.");
 
-            if (file.Data != null) 
-            {
-                entity.UploadedFileId = file.Data.Id;
-            }
-            
+            entity.UploadedFileId = file.Id;
+
             var result = await _repository.CreateAsync(entity, cancellationToken)
                                 ?? throw new InvalidOperationException("Failed to create entity.");
 
@@ -65,18 +62,20 @@ namespace Application.Services.EntityServices
 
             var entity = _mapper.Map<Slide>(entityUpdateDto);
 
-            var file = await _uploadedFileService.UpdateAsync(new UpdateUploadedFileDto()
+            if(entityUpdateDto.File != null)
             {
-                Id = entity.UploadedFileId,
-                File = entityUpdateDto.File,
-                Description = entityUpdateDto.Content,
-                Alt = entityUpdateDto.Title
-            }, cancellationToken);
+                var file = (await _uploadedFileService.UpdateAsync(new UpdateUploadedFileDto()
+                {
+                    Id = entity.UploadedFileId,
+                    File = entityUpdateDto.File,
+                    Description = entityUpdateDto.Content,
+                    Alt = entityUpdateDto.Title
+                }, cancellationToken)).Data ?? throw new InvalidOperationException("Failed to update entity.");
 
-            if (file.Data != null)
-            {
-                entity.UploadedFileId = file.Data.Id;
+                entity.UploadedFileId = file.Id;
             }
+
+            
 
             var result = await _repository.UpdateAsync(entity, cancellationToken)
                                 ?? throw new InvalidOperationException("Failed to update entity.");

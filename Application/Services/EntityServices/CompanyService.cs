@@ -15,6 +15,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Application.Services.EntityServices
 {
@@ -40,18 +41,15 @@ namespace Application.Services.EntityServices
 
             if (entityCreateDto.Logo != null)
             {
-                var file = await _uploadedFileService.CreateAsync(new CreateUploadedFileDto()
+                var file = (await _uploadedFileService.CreateAsync(new CreateUploadedFileDto()
                 {
                     File = entityCreateDto.Logo,
                     Description = entityCreateDto.Description,
                     Alt = entityCreateDto.Name,
                     EntityName = entityTypeName.ToLower()
-                }, cancellationToken);
+                }, cancellationToken)).Data ?? throw new InvalidOperationException();
 
-                if (file.Data != null)
-                {
-                    entity.LogoFileId = file.Data.Id;
-                }
+                entity.LogoFileId = file.Id;
             }
 
             var result = await _repository.CreateAsync(entity, cancellationToken)
@@ -70,18 +68,18 @@ namespace Application.Services.EntityServices
 
             if (entityUpdateDto.Logo != null) 
             {
-                var file = await _uploadedFileService.UpdateAsync(new UpdateUploadedFileDto()
+                var file = (await _uploadedFileService.CreateAsync(new CreateUploadedFileDto()
                 {
-                    Id = entity.LogoFileId ?? Guid.Empty,
                     File = entityUpdateDto.Logo,
                     Description = entityUpdateDto.Description,
                     Alt = entityUpdateDto.Name
-                }, cancellationToken);
+                }, cancellationToken)).Data ?? throw new InvalidOperationException();
 
-                if (file.Data != null)
+                if(entity.LogoFileId != null)
                 {
-                    entity.LogoFileId = file.Data.Id;
+                    await _uploadedFileService.DeleteAsync(entity.LogoFileId ?? Guid.Empty, cancellationToken);
                 }
+                entity.LogoFileId = file.Id;
             }
 
             var result = await _repository.UpdateAsync(entity, cancellationToken)
@@ -101,6 +99,9 @@ namespace Application.Services.EntityServices
 
             await _repository.DeleteAsync(entity, cancellationToken);
 
+            if (entity.LogoFileId == null)
+                return ResponseModel<bool>.Ok();
+
             return await _uploadedFileService.DeleteAsync(entity.LogoFileId ?? Guid.Empty, cancellationToken);
         }
 
@@ -115,9 +116,12 @@ namespace Application.Services.EntityServices
 
             var result = _mapper.Map<CompanyViewModel>(entity);
 
+            if(entity.LogoFileId == null)
+                return ResponseModel<CompanyViewModel?>.Ok(result);
+
             result.LogoFile = (await _uploadedFileService.GetByIdAsync(entity.LogoFileId ?? Guid.Empty, cancellationToken)).Data;
 
-            return ResponseModel<CompanyViewModel?>.Ok();
+            return ResponseModel<CompanyViewModel?>.Ok(result);
         }
 
         public override async Task<ResponseModel<CompanyViewModel?>> GetAsync(Expression<Func<Company, bool>> predicate, CancellationToken cancellationToken = default)
@@ -131,7 +135,11 @@ namespace Application.Services.EntityServices
 
             var result = _mapper.Map<CompanyViewModel>(entity);
 
+            if (entity.LogoFileId == null)
+                return ResponseModel<CompanyViewModel?>.Ok(result);
+
             result.LogoFile = (await _uploadedFileService.GetByIdAsync(entity.LogoFileId ?? Guid.Empty, cancellationToken)).Data;
+
             return ResponseModel<CompanyViewModel?>.Ok(result);
         }
     }
