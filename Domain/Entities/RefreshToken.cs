@@ -31,6 +31,17 @@ namespace Domain.Entities
         public DateTime ExpiresAt { get; set; }
 
         /// <summary>
+        /// Sessiya Id'si: bitta login'dan rotatsiya orqali chiqqan barcha tokenlarda bir xil.
+        /// Token o'g'irlangani aniqlansa, foydalanuvchining boshqa qurilmalari emas, faqat shu sessiya yopiladi.
+        /// </summary>
+        public Guid SessionId { get; set; }
+
+        /// <summary>
+        /// Sessiyaning absolut tugash vaqti (UTC). Rotatsiyada uzaymaydi: muddat tugagach qayta login qilish shart.
+        /// </summary>
+        public DateTime SessionExpiresAt { get; set; }
+
+        /// <summary>
         /// Token bekor qilingan vaqt (UTC): rotatsiya, logout yoki parol almashishi.
         /// Null bo'lsa token hali bekor qilinmagan.
         /// </summary>

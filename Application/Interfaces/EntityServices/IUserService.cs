@@ -1,4 +1,5 @@
-﻿using Application.Interfaces.EntityServices.Abstractions;
+﻿using Application.Models.Results;
+using Application.Interfaces.EntityServices.Abstractions;
 using Application.Models.Dtos.Users;
 using Application.Models.ViewModels.Users;
 using Domain.Entities;
@@ -17,5 +18,6 @@ namespace Application.Interfaces.EntityServices
                                 UserViewModel>
     {
         Task<User?> GetCurrentUser(CancellationToken cancellationToken = default);
+        Task<ResponseModel<UserViewModel>> AssignRoleAsync(Guid userId, Guid userRoleId, CancellationToken cancellationToken = default);
     }
 }

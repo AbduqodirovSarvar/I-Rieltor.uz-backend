@@ -29,6 +29,15 @@ namespace Persistance.Services.Repositories
             return updated == 1;
         }
 
+        public async Task<int> RevokeSessionAsync(Guid userId, Guid sessionId, DateTime revokedAt, CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .Where(x => x.UserId == userId && x.SessionId == sessionId && x.RevokedAt == null)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(x => x.RevokedAt, revokedAt)
+                    .SetProperty(x => x.UpdatedAt, revokedAt), cancellationToken);
+        }
+
         public async Task<int> RevokeAllActiveAsync(Guid userId, DateTime revokedAt, CancellationToken cancellationToken = default)
         {
             return await _dbSet

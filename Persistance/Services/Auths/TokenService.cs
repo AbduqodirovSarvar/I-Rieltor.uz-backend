@@ -20,6 +20,8 @@ namespace Persistance.Services.Auths
 
         public TimeSpan RefreshTokenLifetime => TimeSpan.FromDays(_configuration.RefreshTokenDays);
 
+        public TimeSpan SessionLifetime => TimeSpan.FromDays(_configuration.SessionDays);
+
         public (string Token, DateTime ExpiresAt) GenerateAccessToken(Claim[] claims)
         {
             var jwtClaim = new[]

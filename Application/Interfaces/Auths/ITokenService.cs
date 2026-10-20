@@ -22,5 +22,7 @@ namespace Application.Interfaces.Auths
         string HashRefreshToken(string refreshToken);
 
         TimeSpan RefreshTokenLifetime { get; }
+
+        TimeSpan SessionLifetime { get; }
     }
 }

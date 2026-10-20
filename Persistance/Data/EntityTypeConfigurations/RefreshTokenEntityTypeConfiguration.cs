@@ -22,6 +22,8 @@ namespace Persistance.Data.EntityTypeConfigurations
             builder.HasIndex(x => x.TokenHash)
                    .IsUnique();
             builder.HasIndex(x => x.UserId);
+            // A detected token theft revokes one session by this key.
+            builder.HasIndex(x => x.SessionId);
             // Long enough for an IPv6 address.
             builder.Property(x => x.CreatedByIp)
                    .HasMaxLength(45);

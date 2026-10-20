@@ -37,6 +37,9 @@ namespace Application.Services.Auths
     {
         private const string InvalidCredentialsMessage = "Invalid login or password.";
         private const string InvalidRefreshTokenMessage = "Session has expired. Sign in again.";
+        // A rotated token presented again this soon is a client retry or a second tab, not theft.
+        private static readonly TimeSpan RefreshReuseGracePeriod = TimeSpan.FromSeconds(30);
+
         private const string InvalidConfirmationLinkMessage = "The confirmation link is invalid or has expired.";
 
         // Hash used when the login is unknown, so a failed sign-in takes the same time either way.
@@ -139,16 +142,23 @@ namespace Application.Services.Auths
             var stored = await _refreshTokenRepository.GetByHashAsync(_tokenService.HashRefreshToken(refreshToken), cancellationToken)
                             ?? throw new UnauthorizedAccessException(InvalidRefreshTokenMessage);
 
+            // Rows created before sessions existed have no session values; each counts as its own session.
+            var sessionId = stored.SessionId == Guid.Empty ? stored.Id : stored.SessionId;
+            var sessionExpiresAt = stored.SessionExpiresAt == default ? stored.ExpiresAt : stored.SessionExpiresAt;
+
+            // Expired tokens are refused without side effects, so an old leaked token cannot be used to log anyone out.
+            if (stored.ExpiresAt <= now || sessionExpiresAt <= now)
+                throw new UnauthorizedAccessException(InvalidRefreshTokenMessage);
+
             if (stored.RevokedAt != null)
             {
-                // A token that was already exchanged is being used again: someone holds a copy.
-                // End every session of the user so the copy, and anything issued from it, stops working.
-                await _refreshTokenRepository.RevokeAllActiveAsync(stored.UserId, now, cancellationToken);
+                // Only a token that was exchanged for a newer one and comes back later means someone holds a copy:
+                // end that session, so the copy and the tokens issued from it stop working. Tokens revoked by
+                // logout or "sign out everywhere" are simply refused.
+                if (stored.ReplacedByTokenId != null && now - stored.RevokedAt.Value > RefreshReuseGracePeriod)
+                    await _refreshTokenRepository.RevokeSessionAsync(stored.UserId, sessionId, now, cancellationToken);
                 throw new UnauthorizedAccessException(InvalidRefreshTokenMessage);
             }
-
-            if (stored.ExpiresAt <= now)
-                throw new UnauthorizedAccessException(InvalidRefreshTokenMessage);
 
             var user = await _userRepository
                                 .Query(x => x.Id == stored.UserId, cancellationToken)
@@ -157,16 +167,23 @@ namespace Application.Services.Auths
                                 .FirstOrDefaultAsync(cancellationToken)
                                 ?? throw new UnauthorizedAccessException(InvalidRefreshTokenMessage);
 
-            var newTokenId = Guid.CreateVersion7();
-            if (!await _refreshTokenRepository.TryRevokeAsync(stored.Id, newTokenId, now, cancellationToken))
+            // Revoking the old token and storing the new one commit together: a failed insert does not sign the user out,
+            // and a concurrent request with the same token waits on the row lock and then finds it revoked.
+            return await _unitOfWork.ExecuteAsync(async () =>
             {
-                // Another request exchanged the same token a moment earlier; treat it like reuse.
-                await _refreshTokenRepository.RevokeAllActiveAsync(stored.UserId, now, cancellationToken);
-                throw new UnauthorizedAccessException(InvalidRefreshTokenMessage);
-            }
+                var newTokenId = Guid.CreateVersion7();
+                // Another request exchanged the same token a moment earlier (second tab, retry): refuse this one only.
+                if (!await _refreshTokenRepository.TryRevokeAsync(stored.Id, newTokenId, now, cancellationToken))
+                    throw new UnauthorizedAccessException(InvalidRefreshTokenMessage);
 
-            return await IssueTokensAsync(user, cancellationToken, newTokenId);
+                return await IssueTokensAsync(user, cancellationToken, new SessionToken(newTokenId, sessionId, sessionExpiresAt));
+            }, cancellationToken);
         }
+
+        /// <summary>
+        /// Continues an existing session on rotation; null starts a new session (sign-in).
+        /// </summary>
+        private sealed record SessionToken(Guid TokenId, Guid SessionId, DateTime SessionExpiresAt);
 
         public async Task<bool> RegisterViaEimzoAsync(RegisterViaEimzoDto registerDto, CancellationToken cancellationToken)
         {
@@ -232,7 +249,7 @@ namespace Application.Services.Auths
         /// Starts a session: a short-lived access token plus a refresh token whose hash is stored.
         /// <paramref name="user"/> must be loaded with its role and permissions.
         /// </summary>
-        private async Task<TokenViewModel> IssueTokensAsync(User user, CancellationToken cancellationToken, Guid? refreshTokenId = null)
+        private async Task<TokenViewModel> IssueTokensAsync(User user, CancellationToken cancellationToken, SessionToken? session = null)
         {
             var claims = new List<Claim>
             {
@@ -246,14 +263,22 @@ namespace Application.Services.Auths
             });
             var (accessToken, accessTokenExpiresAt) = _tokenService.GenerateAccessToken([.. claims]);
 
+            var now = DateTime.UtcNow;
+            var tokenId = session?.TokenId ?? Guid.CreateVersion7();
+            var sessionExpiresAt = session?.SessionExpiresAt ?? now.Add(_tokenService.SessionLifetime);
+            // Each refresh extends the token, never past the end of the session.
+            var candidateExpiresAt = now.Add(_tokenService.RefreshTokenLifetime);
+            var refreshTokenExpiresAt = candidateExpiresAt < sessionExpiresAt ? candidateExpiresAt : sessionExpiresAt;
+
             var refreshToken = _tokenService.GenerateRefreshToken();
-            var refreshTokenExpiresAt = DateTime.UtcNow.Add(_tokenService.RefreshTokenLifetime);
             await _refreshTokenRepository.CreateAsync(new RefreshToken
             {
-                Id = refreshTokenId ?? Guid.CreateVersion7(),
+                Id = tokenId,
                 UserId = user.Id,
                 TokenHash = _tokenService.HashRefreshToken(refreshToken),
                 ExpiresAt = refreshTokenExpiresAt,
+                SessionId = session?.SessionId ?? tokenId,
+                SessionExpiresAt = sessionExpiresAt,
                 CreatedByIp = _currentUserService.IpAddress
             }, cancellationToken);
 

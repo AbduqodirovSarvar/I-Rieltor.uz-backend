@@ -36,6 +36,36 @@ namespace Application.Services.EntityServices
         private readonly IUserRolePermissionRepository _userRolePermissionRepository = userRolePermissionRepository;
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
 
+        public override async Task<ResponseModel<UserRoleViewModel>> CreateAsync(CreateUserRoleDto entityCreateDto, CancellationToken cancellationToken = default)
+        {
+            string entityTypeName = typeof(UserRole).Name.ToUpper();
+            if (!await _permissionService.Check($"{OperationType.CREATE}_{entityTypeName}"))
+                throw new UnauthorizedAccessException("You do not have permission to create this entity.");
+
+            await EnsureNameAllowedAsync(entityCreateDto.Name, null, cancellationToken);
+
+            var entity = _mapper.Map<UserRole>(entityCreateDto);
+            var result = await _repository.CreateAsync(entity, cancellationToken)
+                                ?? throw new InvalidOperationException("Failed to create entity.");
+
+            return ResponseModel<UserRoleViewModel>.Ok(_mapper.Map<UserRoleViewModel>(result));
+        }
+
+        /// <summary>
+        /// System role names are reserved in any letter case ("super_admin" would look like a system role, and
+        /// <see cref="SystemRoles.IsSystemRole"/> would then refuse to rename or delete it). Names are unique case-insensitively.
+        /// </summary>
+        private async Task EnsureNameAllowedAsync(string name, UserRole? existing, CancellationToken cancellationToken)
+        {
+            var renamingSystemRole = existing != null && SystemRoles.IsSystemRole(existing.Name);
+            if (!renamingSystemRole && SystemRoles.IsSystemRole(name))
+                throw new InvalidOperationException($"The name '{name}' is reserved for a system role.");
+
+            var lower = name.Trim().ToLowerInvariant();
+            if (await _repository.AnyAsync(r => r.Name.ToLower() == lower && (existing == null || r.Id != existing.Id), cancellationToken))
+                throw new ConflictException($"A role named '{name}' already exists.");
+        }
+
         public override async Task<ResponseModel<UserRoleViewModel>> UpdateAsync(UpdateUserRoleDto entityUpdateDto, CancellationToken cancellationToken = default)
         {
             string entityTypeName = typeof(UserRole).Name.ToUpper();
@@ -48,6 +78,7 @@ namespace Application.Services.EntityServices
             // Registration and the seeder look system roles up by name.
             if (SystemRoles.IsSystemRole(entity.Name) && !string.Equals(entity.Name, entityUpdateDto.Name, StringComparison.Ordinal))
                 throw new InvalidOperationException($"System role '{entity.Name}' cannot be renamed.");
+            await EnsureNameAllowedAsync(entityUpdateDto.Name, entity, cancellationToken);
 
             _mapper.Map(entityUpdateDto, entity);
 

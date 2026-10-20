@@ -15,5 +15,7 @@ namespace Domain.Enums.Actions
         READ_USERROLE,
         UPDATE_USERROLE,
         DELETE_USERROLE,
+        /// <summary>Foydalanuvchiga rol berish (PUT api/User/role).</summary>
+        ASSIGN_USERROLE,
     }
 }

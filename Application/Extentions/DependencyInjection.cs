@@ -1,4 +1,5 @@
-﻿using Application.Interfaces.Auths;
+﻿using Application.Authorization;
+using Application.Interfaces.Auths;
 using Application.Interfaces.EntityServices;
 using Application.Interfaces.EntityServices.Abstractions;
 using Application.Mappings;
@@ -26,6 +27,7 @@ namespace Application.Extentions
             services.AddScoped(typeof(IGenericEntityService<,,,>), typeof(GenericEntityService<,,,>));
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<IUserService, UserService>();
+            services.AddScoped<IUserAccessGuard, UserAccessGuard>();
             services.AddScoped<IUserRoleService, UserRoleService>();
             services.AddScoped<IUserRolePermissionService, UserRolePermissionService>();
             services.AddScoped<IUploadedFileService, UploadedFileService>();

@@ -17,6 +17,14 @@ namespace Persistance.Models.ConfigModels
         /// </summary>
         public int AccessTokenMinutes { get; set; } = 30;
 
+        /// <summary>
+        /// A refresh token unused this long expires; each refresh starts the period again, up to <see cref="SessionDays"/>.
+        /// </summary>
         public int RefreshTokenDays { get; set; } = 14;
+
+        /// <summary>
+        /// Absolute limit of one sign-in: after it the user must sign in again, however often the client refreshed.
+        /// </summary>
+        public int SessionDays { get; set; } = 30;
     }
 }

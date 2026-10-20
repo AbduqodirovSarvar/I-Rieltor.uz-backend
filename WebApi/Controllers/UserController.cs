@@ -1,4 +1,5 @@
-﻿using Application.Features.Users.Commands.Create;
+﻿using Application.Features.Users.Commands.AssignRole;
+using Application.Features.Users.Commands.Create;
 using Application.Features.Users.Commands.Delete;
 using Application.Features.Users.Commands.Update;
 using Application.Features.Users.Queries.GetList;
@@ -47,6 +48,17 @@ namespace WebApi.Controllers
         public override async Task<IActionResult> Get([FromQuery] GetOneUserQuery request)
         {
             return await base.Get(request);
+        }
+
+        /// <summary>
+        /// Gives a user a role; refused for a role with more rights than the caller's, and for the caller's own role.
+        /// </summary>
+        [Authorize(Policy = nameof(UserRoleActions.ASSIGN_USERROLE))]
+        [HttpPut("role")]
+        public async Task<IActionResult> AssignRole([FromBody] AssignUserRoleCommand command)
+        {
+            var result = await _mediator.Send(command);
+            return Ok(result);
         }
 
         [Authorize(Policy = nameof(UserActions.READ_USER))]

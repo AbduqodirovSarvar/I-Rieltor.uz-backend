@@ -1,4 +1,6 @@
-﻿using Application.Interfaces.Auths;
+﻿using Domain.Constants;
+using Application.Authorization;
+using Application.Interfaces.Auths;
 using Application.Interfaces.EntityServices;
 using Application.Interfaces.Repositories;
 using Application.Interfaces.Repositories.Abstractions;
@@ -24,7 +26,9 @@ namespace Application.Services.EntityServices
                            IHashService hashService,
                            IRefreshTokenRepository refreshTokenRepository,
                            ICurrentUserService currentUserService,
-                           IUnitOfWork unitOfWork)
+                           IUnitOfWork unitOfWork,
+                           IUserAccessGuard accessGuard,
+                           IUserRoleRepository userRoleRepository)
         : GenericEntityService<User,
                                CreateUserDto,
                                UpdateUserDto,
@@ -35,17 +39,50 @@ namespace Application.Services.EntityServices
         private readonly IRefreshTokenRepository _refreshTokenRepository = refreshTokenRepository;
         private readonly ICurrentUserService _currentUserService = currentUserService;
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
+        private readonly IUserAccessGuard _accessGuard = accessGuard;
+        private readonly IUserRoleRepository _userRoleRepository = userRoleRepository;
 
         /// <summary>
         /// Soft-deletes the user and ends all their sessions; a still valid access token stops working once it expires.
         /// </summary>
-        public override Task<ResponseModel<bool>> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
-            => _unitOfWork.ExecuteAsync(async () =>
+        public override async Task<ResponseModel<bool>> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            string entityTypeName = typeof(User).Name.ToUpper();
+            if (!await _permissionService.Check($"{OperationType.DELETE}_{entityTypeName}"))
+                throw new UnauthorizedAccessException("You do not have permission to delete this entity.");
+
+            var target = await _repository.GetAsync(x => x.Id == id, cancellationToken)
+                                ?? throw new KeyNotFoundException("Entity not found");
+            await _accessGuard.EnsureCanDeleteUserAsync(target, cancellationToken);
+
+            return await _unitOfWork.ExecuteAsync(async () =>
             {
-                var result = await base.DeleteAsync(id, cancellationToken);
+                var deleted = await _repository.DeleteAsync(target, cancellationToken);
                 await _refreshTokenRepository.RevokeAllActiveAsync(id, DateTime.UtcNow, cancellationToken);
-                return result;
+                return ResponseModel<bool>.Ok(deleted);
             }, cancellationToken);
+        }
+
+        /// <summary>
+        /// Gives the user a role. The services check permissions against the database, so the change applies at once;
+        /// the permission claims in the user's access token follow at the next refresh.
+        /// </summary>
+        public async Task<ResponseModel<UserViewModel>> AssignRoleAsync(Guid userId, Guid userRoleId, CancellationToken cancellationToken = default)
+        {
+            if (!await _permissionService.Check(nameof(Domain.Enums.Actions.UserRoleActions.ASSIGN_USERROLE)))
+                throw new UnauthorizedAccessException("You do not have permission to assign roles.");
+
+            var target = await _repository.GetAsync(x => x.Id == userId, cancellationToken)
+                                ?? throw new KeyNotFoundException("User not found");
+            if (!await _userRoleRepository.AnyAsync(r => r.Id == userRoleId, cancellationToken))
+                throw new KeyNotFoundException("Role not found");
+
+            await _accessGuard.EnsureCanAssignRoleAsync(target, userRoleId, cancellationToken);
+
+            target.UserRoleId = userRoleId;
+            var result = await _repository.UpdateAsync(target, cancellationToken);
+            return ResponseModel<UserViewModel>.Ok(_mapper.Map<UserViewModel>(result));
+        }
 
         public override async Task<ResponseModel<UserViewModel>> CreateAsync(CreateUserDto entityCreateDto, CancellationToken cancellationToken = default)
         {
@@ -56,8 +93,13 @@ namespace Application.Services.EntityServices
             if (await _userRepository.ExistsWithAnyAsync(entityCreateDto.Login, entityCreateDto.Email, entityCreateDto.INNPINFL, entityCreateDto.Phone, cancellationToken: cancellationToken))
                 throw new InvalidOperationException("User with this login, email, INNPINFL or phone already exists.");
 
+            if (!string.IsNullOrWhiteSpace(entityCreateDto.INNPINFL))
+                await _accessGuard.EnsureCanSetIdentifierAsync(cancellationToken);
+
             var entity = _mapper.Map<User>(entityCreateDto);
             entity.PasswordHash = _hashService.Hash(entityCreateDto.Password);
+            // Same starting role as self-registration; a different one is given with PUT api/User/role.
+            entity.UserRoleId = (await _userRoleRepository.GetAsync(r => r.Name == SystemRoles.DefaultUser, cancellationToken))?.Id;
 
             var result = await _repository.CreateAsync(entity, cancellationToken)
                                 ?? throw new InvalidOperationException("Failed to create entity.");
@@ -73,6 +115,11 @@ namespace Application.Services.EntityServices
 
             var entity = await _repository.GetAsync(x => x.Id == entityUpdateDto.Id, cancellationToken)
                                 ?? throw new KeyNotFoundException("Entity not found");
+            await _accessGuard.EnsureCanManageUserAsync(entity, cancellationToken);
+
+            // Changing the PINFL/INN would send someone else's E-IMZO sign-in to this account.
+            if (!string.Equals(entity.INNPINFL ?? "", entityUpdateDto.INNPINFL ?? "", StringComparison.Ordinal))
+                await _accessGuard.EnsureCanSetIdentifierAsync(cancellationToken);
 
             if (await _userRepository.ExistsWithAnyAsync(entityUpdateDto.Login, entityUpdateDto.Email, entityUpdateDto.INNPINFL, entityUpdateDto.Phone, entityUpdateDto.Id, cancellationToken))
                 throw new InvalidOperationException("User with this login, email, INNPINFL or phone already exists.");

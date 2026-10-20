@@ -15,8 +15,13 @@ namespace Application.Interfaces.Repositories
         Task<bool> TryRevokeAsync(Guid tokenId, Guid? replacedByTokenId, DateTime revokedAt, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Ends every active session of the user (password change, detected token theft).
+        /// Ends every active session of the user (password change, user deleted).
         /// </summary>
         Task<int> RevokeAllActiveAsync(Guid userId, DateTime revokedAt, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Ends one session (all tokens rotated from one sign-in) when a copy of its token is detected.
+        /// </summary>
+        Task<int> RevokeSessionAsync(Guid userId, Guid sessionId, DateTime revokedAt, CancellationToken cancellationToken = default);
     }
 }
