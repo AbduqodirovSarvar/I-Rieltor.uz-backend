@@ -13,10 +13,17 @@ namespace Persistance.Services.Files
     public class FileService : IFileService
     {
         private readonly string _webRootPath;
+        private readonly string _publicBaseUrl;
 
-        public FileService(string webRootPath)
+        /// <param name="webRootPath">wwwroot papkasining to'liq yo'li.</param>
+        /// <param name="publicBaseUrl">
+        /// Fayllar statik beriladigan server manzili (masalan "https://api.i-rieltor.uz").
+        /// Bo'sh bo'lsa Url nisbiy yo'l ko'rinishida saqlanadi.
+        /// </param>
+        public FileService(string webRootPath, string? publicBaseUrl = null)
         {
             _webRootPath = webRootPath ?? throw new ArgumentNullException(nameof(webRootPath));
+            _publicBaseUrl = publicBaseUrl?.TrimEnd('/') ?? string.Empty;
 
             if (!Directory.Exists(_webRootPath))
                 Directory.CreateDirectory(_webRootPath);
@@ -38,11 +45,16 @@ namespace Persistance.Services.Files
             if (file == null || file.Length == 0)
                 throw new ArgumentException("File is empty");
 
+            // Only types that the static file middleware is allowed to serve may be stored.
+            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+            var mimeType = GetMimeType(extension);
+            if (mimeType == FileMimeType.Unknown)
+                throw new ArgumentException($"File type '{extension}' is not allowed.");
+
             var uploadPath = GetUploadPath(category);
             if (!Directory.Exists(uploadPath))
                 Directory.CreateDirectory(uploadPath);
 
-            var extension = Path.GetExtension(file.FileName);
             var uniqueName = $"{Guid.NewGuid()}{extension}";
             var filePath = Path.Combine(uploadPath, uniqueName);
 
@@ -51,25 +63,17 @@ namespace Persistance.Services.Files
                 await file.CopyToAsync(stream);
             }
 
+            var relativePath = category != null ? $"/uploads/{category}/{uniqueName}" : $"/uploads/{uniqueName}";
+
             return new UploadedFile
             {
-                Id = Guid.NewGuid(),
                 Name = uniqueName,
-                Path = category != null ? $"/uploads/{category}/{uniqueName}" : $"/uploads/{uniqueName}",
-                Type = GetMimeType(extension),
+                Path = relativePath,
+                Url = $"{_publicBaseUrl}{relativePath}",
+                Type = mimeType,
                 Size = file.Length,
                 CreatedAt = DateTime.UtcNow
             };
-        }
-
-        public async Task<byte[]?> GetFileAsync(string fileName, string category = "default")
-        {
-            var filePath = Path.Combine(GetUploadPath(category), fileName);
-
-            if (!File.Exists(filePath))
-                return null;
-
-            return await File.ReadAllBytesAsync(filePath);
         }
 
         public async Task DeleteFileAsync(string fileName, string category = "default")

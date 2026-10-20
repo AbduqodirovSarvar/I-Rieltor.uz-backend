@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 namespace Domain.Enums.Actions
 {
+    /// <summary>
+    /// UserRole uchun ruxsat nomlari (CRUD). Har bir qiymat bitta policy va UserRolePermission.Permission qiymati sifatida ishlatiladi.
+    /// </summary>
     public enum UserRoleActions
     {
         CREATE_USERROLE,

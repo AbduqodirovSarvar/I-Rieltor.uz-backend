@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 namespace Domain.Enums.Permissions
 {
+    /// <summary>
+    /// Ishlatilmaydi: ruxsatlar Domain.Enums.Actions'dagi enum'lardan olinadi. Eski variant sifatida qolgan.
+    /// </summary>
     public enum UserRoleCrudPermissionEnum
     {
         CREATE_USERROLE,

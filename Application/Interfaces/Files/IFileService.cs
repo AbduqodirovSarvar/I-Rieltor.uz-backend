@@ -11,7 +11,6 @@ namespace Application.Interfaces.Files
     public interface IFileService
     {
         Task<UploadedFile> SaveFileAsync(IFormFile fileBytes, string category = "default");
-        Task<byte[]?> GetFileAsync(string fileName, string category = "default");
         Task DeleteFileAsync(string fileName, string category = "default");
     }
 }

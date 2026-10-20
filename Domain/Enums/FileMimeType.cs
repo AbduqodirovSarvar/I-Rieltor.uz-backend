@@ -6,16 +6,46 @@ using System.Threading.Tasks;
 
 namespace Domain.Enums
 {
+    /// <summary>
+    /// Yuklangan fayl turi (MIME).
+    /// </summary>
     public enum FileMimeType
     {
-        Unknown,           // application/octet-stream
-        ImagePng,          // image/png
-        ImageJpeg,         // image/jpeg
-        ImageGif,          // image/gif
-        ApplicationPdf,    // application/pdf
-        ApplicationDocx,   // application/vnd.openxmlformats-officedocument.wordprocessingml.document
-        ApplicationXlsx,   // application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
-        VideoMp4,          // video/mp4
-        AudioMp3           // audio/mpeg
+        /// <summary>
+        /// Noma'lum tur (application/octet-stream).
+        /// </summary>
+        Unknown,
+        /// <summary>
+        /// PNG rasm (image/png).
+        /// </summary>
+        ImagePng,
+        /// <summary>
+        /// JPEG rasm (image/jpeg).
+        /// </summary>
+        ImageJpeg,
+        /// <summary>
+        /// GIF rasm (image/gif).
+        /// </summary>
+        ImageGif,
+        /// <summary>
+        /// PDF hujjat (application/pdf).
+        /// </summary>
+        ApplicationPdf,
+        /// <summary>
+        /// Word hujjat (.docx).
+        /// </summary>
+        ApplicationDocx,
+        /// <summary>
+        /// Excel jadval (.xlsx).
+        /// </summary>
+        ApplicationXlsx,
+        /// <summary>
+        /// MP4 video (video/mp4).
+        /// </summary>
+        VideoMp4,
+        /// <summary>
+        /// MP3 audio (audio/mpeg).
+        /// </summary>
+        AudioMp3
     }
 }

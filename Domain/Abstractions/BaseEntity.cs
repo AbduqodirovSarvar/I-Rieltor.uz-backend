@@ -3,15 +3,15 @@
 namespace Domain.Abstractions
 {
     /// <summary>
-    /// Base entity containing the primary key identifier.
-    /// All entities in the system should inherit from this class.
+    /// Barcha entity'lar uchun eng asosiy klass. Faqat birlamchi kalitni saqlaydi.
     /// </summary>
     public abstract class BaseEntity
     {
         /// <summary>
-        /// Unique identifier for the entity.
-        /// Initialized with a new GUID upon creation.
+        /// Yozuvning noyob identifikatori (birlamchi kalit, PK).
+        /// Obyekt yaratilishi bilan avtomatik UUIDv7 beriladi: vaqt bo'yicha tartiblangan,
+        /// shuning uchun yangi yozuvlar indeks oxiriga qo'shiladi va B-tree bo'linib ketmaydi.
         /// </summary>
-        public Guid Id { get; init; } = Guid.NewGuid();
+        public Guid Id { get; init; } = Guid.CreateVersion7();
     }
 }

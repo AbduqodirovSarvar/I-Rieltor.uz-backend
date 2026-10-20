@@ -1,4 +1,6 @@
 ﻿using Application.Interfaces.Notifications;
+using Microsoft.Extensions.Options;
+using Persistance.Models.ConfigModels;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,32 +11,25 @@ using System.Threading.Tasks;
 
 namespace Persistance.Services.Notifications
 {
-    public class EmailService : IEmailService
+    public class EmailService(IOptions<SmtpConfiguration> options) : IEmailService
     {
+        private readonly SmtpConfiguration _smtp = options.Value;
+
         public async Task<bool> SendEmailAsync(string email, string subject, string body)
         {
-            var model = new
+            using var message = new MailMessage
             {
-                Name = "Family Tree",
-                Email = email,
-                Message = body,
+                From = new MailAddress(_smtp.FromAddress, _smtp.FromName),
                 Subject = subject,
+                Body = body,
+                IsBodyHtml = true
             };
+            message.To.Add(new MailAddress(email));
 
-            body = $"<p>Email From: {model.Name} ({model.Email})</p><p>Message:</p><p>{model.Message}</p>";
-
-            var message = new MailMessage();
-            message.To.Add(new MailAddress(model.Email));
-            message.From = new MailAddress("abduqodirovsarvar.2002@gmail.com");
-            message.Subject = model.Subject;
-            message.Body = body;
-            message.IsBodyHtml = true;
-
-            using var smtp = new SmtpClient("smtp.gmail.com")
+            using var smtp = new SmtpClient(_smtp.Host, _smtp.Port)
             {
-                Port = 587,
-                Credentials = new NetworkCredential("abduqodirovsarvar.2002@gmail.com", "hgjb mvzo nuji fcwb"),
-                EnableSsl = true,
+                Credentials = new NetworkCredential(_smtp.UserName, _smtp.Password),
+                EnableSsl = _smtp.EnableSsl,
             };
 
             try
@@ -45,7 +40,7 @@ namespace Persistance.Services.Notifications
             catch (Exception ex)
             {
                 Console.WriteLine($"Error sending email: {ex.Message}");
-                throw new Exception(ex.Message);
+                throw;
             }
             return true;
         }

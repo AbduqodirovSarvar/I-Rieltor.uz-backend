@@ -93,10 +93,7 @@ namespace Application.Services.EntityServices
             var entity = await _repository.GetByIdAsync(id, cancellationToken)
                                 ?? throw new KeyNotFoundException("Entity not found");
 
-            var result = _mapper.Map<UploadedFileViewModel>(entity);
-            result.Content = await _fileService.GetFileAsync(entity.Name, entity.EntityName.ToLower());
-
-            return ResponseModel<UploadedFileViewModel?>.Ok(result);
+            return ResponseModel<UploadedFileViewModel?>.Ok(_mapper.Map<UploadedFileViewModel>(entity));
         }
 
         public override async Task<ResponseModel<UploadedFileViewModel?>> GetAsync(Expression<Func<UploadedFile, bool>> predicate, CancellationToken cancellationToken = default)
@@ -108,10 +105,7 @@ namespace Application.Services.EntityServices
             var entity = await _repository.GetAsync(predicate, cancellationToken)
                                 ?? throw new KeyNotFoundException("Entity not found");
 
-            var result = _mapper.Map<UploadedFileViewModel>(entity);
-            result.Content = await _fileService.GetFileAsync(entity.Name, entity.EntityName.ToLower());
-
-            return ResponseModel<UploadedFileViewModel?>.Ok(result);
+            return ResponseModel<UploadedFileViewModel?>.Ok(_mapper.Map<UploadedFileViewModel>(entity));
         }
     }
 }

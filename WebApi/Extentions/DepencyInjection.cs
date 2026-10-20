@@ -74,7 +74,7 @@ namespace WebApi.Extentions
                 Directory.CreateDirectory(webRootPath);
             }
 
-            var uploadedPath = Path.Combine(webRootPath, "uploaded");
+            var uploadedPath = Path.Combine(webRootPath, "uploads");
             if (!Directory.Exists(uploadedPath))
             {
                 Directory.CreateDirectory(uploadedPath);

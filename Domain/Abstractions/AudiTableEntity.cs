@@ -3,39 +3,36 @@
 namespace Domain.Abstractions
 {
     /// <summary>
-    /// Base entity for auditing purposes.
-    /// Tracks creation, updates, and soft deletion status.
-    /// Inherits from BaseEntity.
+    /// Audit maydonlariga ega entity'lar uchun asosiy klass.
+    /// Kim va qachon yaratgani, o'zgartirgani hamda o'chirilganlik belgisini saqlaydi.
+    /// Maydonlarni <c>AuditableEntitySaveChangesInterceptor</c> avtomatik to'ldiradi.
     /// </summary>
     public abstract class AudiTableEntity : BaseEntity
     {
         /// <summary>
-        /// Date and time when the entity was created.
-        /// Automatically set when creating a new record.
+        /// Yozuv yaratilgan vaqt (UTC). Saqlashda avtomatik qo'yiladi.
         /// </summary>
         public DateTime CreatedAt { get; set; }
 
         /// <summary>
-        /// Identifier of the user who created the entity.
-        /// Nullable for system-generated records.
+        /// Yozuvni yaratgan foydalanuvchining Id'si.
+        /// Tizim yoki anonim foydalanuvchi yaratgan bo'lsa null.
         /// </summary>
         public Guid? CreatedBy { get; set; }
 
         /// <summary>
-        /// Date and time when the entity was last updated.
-        /// Nullable if the entity has never been updated.
+        /// Oxirgi o'zgartirilgan vaqt (UTC). Hech o'zgartirilmagan bo'lsa null.
         /// </summary>
         public DateTime? UpdatedAt { get; set; }
 
         /// <summary>
-        /// Identifier of the user who last updated the entity.
-        /// Nullable if the entity has never been updated.
+        /// Oxirgi marta o'zgartirgan foydalanuvchining Id'si. Hech o'zgartirilmagan bo'lsa null.
         /// </summary>
         public Guid? UpdatedBy { get; set; }
 
         /// <summary>
-        /// Indicates whether the entity is soft-deleted.
-        /// If true, the entity is considered deleted but not removed from the database.
+        /// Soft delete belgisi: true bo'lsa yozuv o'chirilgan hisoblanadi,
+        /// lekin bazadan jismonan o'chirilmaydi.
         /// </summary>
         public bool IsDeleted { get; set; } = false;
     }

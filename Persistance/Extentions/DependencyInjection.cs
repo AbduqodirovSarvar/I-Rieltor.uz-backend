@@ -56,25 +56,35 @@ namespace Persistance.Extentions
                 if (!Directory.Exists(webRootPath))
                     Directory.CreateDirectory(webRootPath);
 
-                return new FileService(webRootPath);
+                return new FileService(webRootPath, configuration["FileStorage:PublicBaseUrl"]);
             });
 
+            services.Configure<SmtpConfiguration>(configuration.GetSection(SmtpConfiguration.SectionName));
+            services.Configure<DefaultAdminConfiguration>(configuration.GetSection(DefaultAdminConfiguration.SectionName));
             services.AddScoped<IEmailService, EmailService>();
 
             services.AddSingleton<IConnectionMultiplexer>(sp => ConnectionMultiplexer.Connect(configuration.GetConnectionString("Redis") ?? "localhost:6379"));
             services.AddScoped<IRedisService, RedisService>();
 
+            var connectionString = configuration.GetConnectionString("PostgreSqlConnection");
+            if (string.IsNullOrWhiteSpace(connectionString))
+                throw new InvalidOperationException(
+                    "ConnectionStrings:PostgreSqlConnection is not configured. Set ConnectionStrings__PostgreSqlConnection in .env or environment variables.");
+
             services.AddScoped<AuditableEntitySaveChangesInterceptor>();
             services.AddDbContext<AppDbContext>((serviceProvider, options) =>
             {
                 var interceptor = serviceProvider.GetRequiredService<AuditableEntitySaveChangesInterceptor>();
-                options.UseNpgsql(configuration.GetConnectionString("PostgreSqlConnection"))
+                options.UseNpgsql(connectionString)
                        .AddInterceptors(interceptor);
             });
 
             services.Configure<JWTConfiguration>(configuration.GetSection("JWTConfiguration"));
 
-            var secretWord = configuration["JWTConfiguration:Secret"] ?? "JWTConfiguration:Secret";
+            var secretWord = configuration["JWTConfiguration:Secret"];
+            if (string.IsNullOrWhiteSpace(secretWord) || Encoding.UTF8.GetByteCount(secretWord) < 32)
+                throw new InvalidOperationException(
+                    "JWTConfiguration:Secret is not configured or shorter than 32 bytes. Set JWTConfiguration__Secret in .env or environment variables.");
 
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>

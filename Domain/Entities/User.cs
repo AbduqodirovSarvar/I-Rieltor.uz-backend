@@ -11,83 +11,73 @@ using System.Threading.Tasks;
 namespace Domain.Entities
 {
     /// <summary>
-    /// Represents a user in the system. Can be individual or legal entity.
-    /// Contains personal, contact, authentication, and role information.
+    /// Tizim foydalanuvchisi: jismoniy shaxs, yuridik shaxs yoki administrator.
+    /// Shaxsiy va aloqa ma'lumotlari, kirish ma'lumotlari va roli shu yerda saqlanadi.
     /// </summary>
     public class User : AudiTableEntity
     {
         /// <summary>
-        /// Type of client: Individual or Legal.
-        /// Determines validation rules for INNPINFL/INN.
+        /// Mijoz turi: jismoniy shaxs (INDIVIDUAL), yuridik shaxs (LEGAL) yoki aniqlanmagan (NONE).
         /// </summary>
         public ClientType Type { get; set; } = ClientType.NONE;
 
         /// <summary>
-        /// FullName name of the individual user.
-        /// Required for Individual clients.
+        /// To'liq ism (F.I.Sh.). Yuridik shaxsda tashkilot nomi yoziladi.
         /// </summary>
         public string FullName { get; set; } = string.Empty;
 
         /// <summary>
-        /// Username for login purposes.
+        /// Tizimga kirish uchun login. Noyob va ixtiyoriy: E-imzo orqali ro'yxatdan o'tganlarda bo'lmaydi.
         /// </summary>
         public string? Login { get; set; } = null;
 
         /// <summary>
-        /// Legal entity name. Required for Legal clients.
+        /// Yuridik shaxsning rasmiy nomi. Faqat LEGAL turdagi mijozlar uchun.
         /// </summary>
         public string? LegalName { get; set; } = null;
 
         /// <summary>
-        /// INNPINFL (for Individual) or INN (for Legal) identifier.
-        /// Conditional validation based on ClientType.
-        /// Individual: 14 digits, Legal: 9 digits.
+        /// Jismoniy shaxsning PINFL'i (14 raqam) yoki yuridik shaxsning INN'i (9 raqam).
+        /// Noyob. E-imzo orqali kirishda foydalanuvchi shu maydon bo'yicha topiladi.
         /// </summary>
         [INNPINFLValidation]
         public string? INNPINFL { get; set; } = null;
 
         /// <summary>
-        /// Primary phone number.
-        /// Validated using PhoneNumberValidation attribute.
+        /// Asosiy telefon raqami, xalqaro formatda (masalan +998901234567). Noyob.
         /// </summary>
         [PhoneNumberValidation]
         public string? Phone { get; set; } = null;
 
         /// <summary>
-        /// Secondary phone number (optional).
-        /// Validated using PhoneNumberValidation attribute.
+        /// Qo'shimcha telefon raqami (ixtiyoriy).
         /// </summary>
         [PhoneNumberValidation]
         public string? SecondaryPhone { get; set; } = null;
 
         /// <summary>
-        /// Residential or business address of the user.
-        /// Optional field.
+        /// Yashash yoki faoliyat manzili (ixtiyoriy).
         /// </summary>
         public string? Address { get; set; } = null;
 
         /// <summary>
-        /// Email address of the user.
-        /// Must be valid email format.
+        /// Elektron pochta manzili. Noyob, login sifatida va xat yuborish uchun ishlatiladi.
         /// </summary>
         [EmailAddress]
         public string Email { get; set; } = string.Empty;
 
         /// <summary>
-        /// Hashed password for authentication.
-        /// Should never store plain text passwords.
+        /// Parolning hash qiymati (PBKDF2). Parolning o'zi hech qachon saqlanmaydi.
         /// </summary>
         public string PasswordHash { get; set; } = string.Empty;
 
         /// <summary>
-        /// Foreign key to the UserRole entity.
-        /// Determines the permissions and access level of the user.
+        /// Foydalanuvchi rolining Id'si (FK). Rol foydalanuvchi qaysi amallarni bajara olishini belgilaydi.
         /// </summary>
         public Guid? UserRoleId { get; set; }
 
         /// <summary>
-        /// Navigation property to the user's role.
-        /// Allows access to role name, description, and permissions.
+        /// Foydalanuvchi roli (navigatsiya). Rol nomi va ruxsatlarga shu orqali murojaat qilinadi.
         /// </summary>
         public UserRole? UserRole { get; set; }
     }
