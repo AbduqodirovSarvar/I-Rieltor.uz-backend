@@ -26,7 +26,6 @@ namespace Application.Features.Slides.Queries.GetList
                 predicate = request.Filters.BuildPredicate<Slide>();
             }
             return await _slideService.GetAllAsync(predicate, request.PageIndex, request.PageSize, cancellationToken);
-            throw new NotImplementedException();
         }
     }
 }

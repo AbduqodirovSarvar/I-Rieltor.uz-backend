@@ -1,4 +1,4 @@
-﻿using Application.Interfaces.Cachings;
+using Application.Interfaces.Cachings;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 using System;
@@ -13,7 +13,7 @@ namespace Persistance.Services.Cachings
 {
     /// <summary>
     /// Redis cache. It is only an optimisation: when Redis is unavailable every call
-    /// logs a warning and behaves like a cache miss, so callers fall back to the database.
+    /// (connection error or timeout) logs a warning and behaves like a cache miss, so callers fall back to the database.
     /// </summary>
     public class RedisService(IConnectionMultiplexer connectionMultiplexer, ILogger<RedisService> logger) : IRedisService
     {
@@ -32,7 +32,7 @@ namespace Persistance.Services.Cachings
             {
                 return await _database.KeyExistsAsync(key);
             }
-            catch (RedisException ex)
+            catch (Exception ex) when (ex is RedisException or TimeoutException)
             {
                 _logger.LogWarning(ex, "Redis is unavailable, EXISTS {Key} skipped", key);
                 return false;
@@ -49,7 +49,7 @@ namespace Persistance.Services.Cachings
 
                 return JsonSerializer.Deserialize<T>(value.ToString(), JsonOptions);
             }
-            catch (RedisException ex)
+            catch (Exception ex) when (ex is RedisException or TimeoutException)
             {
                 _logger.LogWarning(ex, "Redis is unavailable, GET {Key} skipped", key);
                 return default;
@@ -62,7 +62,7 @@ namespace Persistance.Services.Cachings
             {
                 return await _database.KeyDeleteAsync(key);
             }
-            catch (RedisException ex)
+            catch (Exception ex) when (ex is RedisException or TimeoutException)
             {
                 _logger.LogWarning(ex, "Redis is unavailable, DEL {Key} skipped", key);
                 return false;
@@ -76,7 +76,7 @@ namespace Persistance.Services.Cachings
                 var json = JsonSerializer.Serialize(value, JsonOptions);
                 await _database.StringSetAsync(key, json, expiry);
             }
-            catch (RedisException ex)
+            catch (Exception ex) when (ex is RedisException or TimeoutException)
             {
                 _logger.LogWarning(ex, "Redis is unavailable, SET {Key} skipped", key);
             }

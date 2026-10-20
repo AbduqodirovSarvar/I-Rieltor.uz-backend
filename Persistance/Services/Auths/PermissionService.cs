@@ -1,4 +1,5 @@
-﻿using Application.Interfaces.Auths;
+﻿using Application.Authorization;
+using Application.Interfaces.Auths;
 using Application.Interfaces.EntityServices;
 using Application.Interfaces.Repositories;
 using Domain.Entities;
@@ -49,26 +50,7 @@ namespace Persistance.Services.Auths
         }
 
         public Task<IReadOnlyCollection<string>> GetAllPermission()
-        {
-            var permissionNamespace = "Domain.Enums.Actions";
-
-            var domainAssembly = typeof(Domain.Enums.Actions.BaseActions).Assembly;
-
-            var enumTypes = domainAssembly
-                .GetTypes()
-                .Where(t => t.IsEnum && t.Namespace == permissionNamespace)
-                .ToList();
-
-            var permissions = new List<string>();
-
-            foreach (var enumType in enumTypes)
-            {
-                var values = Enum.GetNames(enumType);
-                permissions.AddRange(values);
-            }
-
-            return Task.FromResult((IReadOnlyCollection<string>)permissions.AsReadOnly());
-        }
+            => Task.FromResult(PermissionCatalog.All);
 
     }
 }

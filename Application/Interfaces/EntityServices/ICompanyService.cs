@@ -1,5 +1,6 @@
 ﻿using Application.Interfaces.EntityServices.Abstractions;
 using Application.Models.Dtos.Companies;
+using Application.Models.Results;
 using Application.Models.ViewModels.Companies;
 using Domain.Entities;
 using System;
@@ -16,5 +17,9 @@ namespace Application.Interfaces.EntityServices
                                 UpdateCompanyDto,
                                 CompanyViewModel>
     {
+        /// <summary>
+        /// The site owner's company for the "About" and "Contacts" pages; no permission required.
+        /// </summary>
+        Task<ResponseModel<CompanyViewModel?>> GetPublicAsync(CancellationToken cancellationToken = default);
     }
 }

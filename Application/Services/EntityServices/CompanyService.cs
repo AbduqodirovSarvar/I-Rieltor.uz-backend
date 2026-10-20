@@ -15,7 +15,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+using Microsoft.EntityFrameworkCore;
 
 namespace Application.Services.EntityServices
 {
@@ -111,21 +111,8 @@ namespace Application.Services.EntityServices
 
         public override async Task<ResponseModel<CompanyViewModel?>> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            string entityTypeName = typeof(Company).Name.ToUpper();
-            if (!await _permissionService.Check($"{OperationType.READ}_{entityTypeName}"))
-                throw new UnauthorizedAccessException("You do not have permission to create this entity.");
-
-            var entity = await _repository.GetByIdAsync(id, cancellationToken)
-                                ?? throw new KeyNotFoundException("Entity not found");
-
-            var result = _mapper.Map<CompanyViewModel>(entity);
-
-            if(entity.LogoFileId == null)
-                return ResponseModel<CompanyViewModel?>.Ok(result);
-
-            result.LogoFile = (await _uploadedFileService.GetByIdAsync(entity.LogoFileId ?? Guid.Empty, cancellationToken)).Data;
-
-            return ResponseModel<CompanyViewModel?>.Ok(result);
+            // GetAsync checks the READ permission.
+            return await GetAsync(x => x.Id == id, cancellationToken);
         }
 
         public override async Task<ResponseModel<CompanyViewModel?>> GetAsync(Expression<Func<Company, bool>> predicate, CancellationToken cancellationToken = default)
@@ -134,17 +121,27 @@ namespace Application.Services.EntityServices
             if (!await _permissionService.Check($"{OperationType.READ}_{entityTypeName}"))
                 throw new UnauthorizedAccessException("You do not have permission to create this entity.");
 
-            var entity = await _repository.GetAsync(predicate, cancellationToken)
+            // The logo is loaded with the company: READ_COMPANY is enough, READ_UPLOADEDFILE is not required.
+            var entity = await _repository.Query(predicate, cancellationToken)
+                                .Include(x => x.LogoFile)
+                                .FirstOrDefaultAsync(cancellationToken)
                                 ?? throw new KeyNotFoundException("Entity not found");
 
-            var result = _mapper.Map<CompanyViewModel>(entity);
+            return ResponseModel<CompanyViewModel?>.Ok(_mapper.Map<CompanyViewModel>(entity));
+        }
 
-            if (entity.LogoFileId == null)
-                return ResponseModel<CompanyViewModel?>.Ok(result);
+        /// <summary>
+        /// The site owner's company (the earliest record) for public pages. Open to anonymous visitors.
+        /// </summary>
+        public async Task<ResponseModel<CompanyViewModel?>> GetPublicAsync(CancellationToken cancellationToken = default)
+        {
+            var entity = await _repository.Query(cancellationToken: cancellationToken)
+                                .Include(x => x.LogoFile)
+                                .OrderBy(x => x.CreatedAt)
+                                .FirstOrDefaultAsync(cancellationToken)
+                                ?? throw new KeyNotFoundException("Company information has not been filled in yet.");
 
-            result.LogoFile = (await _uploadedFileService.GetByIdAsync(entity.LogoFileId ?? Guid.Empty, cancellationToken)).Data;
-
-            return ResponseModel<CompanyViewModel?>.Ok(result);
+            return ResponseModel<CompanyViewModel?>.Ok(_mapper.Map<CompanyViewModel>(entity));
         }
     }
 }

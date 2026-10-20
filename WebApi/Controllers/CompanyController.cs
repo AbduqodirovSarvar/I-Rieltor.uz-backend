@@ -1,12 +1,9 @@
 ﻿using Application.Features.Company.Commands.Create;
 using Application.Features.Company.Commands.Delete;
 using Application.Features.Company.Commands.Update;
-using Application.Features.Slides.Commands.Create;
-using Application.Features.Slides.Commands.Delete;
-using Application.Features.Slides.Commands.Update;
-using Application.Features.Slides.Queries.GetList;
-using Application.Features.Slides.Queries.GetOne;
-using Application.Models.Requests.Abstractions;
+using Application.Features.Company.Queries.GetList;
+using Application.Features.Company.Queries.GetOne;
+using Application.Features.Company.Queries.GetPublic;
 using Domain.Enums.Actions;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -18,12 +15,12 @@ namespace WebApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class CompanyController(IMediator mediator) 
-        : BaseEntityCrudController<CreateCompanyCommand, 
+    public class CompanyController(IMediator mediator)
+        : BaseEntityCrudController<CreateCompanyCommand,
                                    UpdateCompanyCommand,
                                    DeleteCompanyCommand,
-                                   GetOneSlideQuery,
-                                   BaseGetListQuery>(mediator)
+                                   GetOneCompanyQuery,
+                                   GetCompanyListQuery>(mediator)
     {
         [Authorize(Policy = nameof(CompanyActions.CREATE_COMPANY))]
         [HttpPost]
@@ -48,16 +45,27 @@ namespace WebApi.Controllers
 
         [Authorize(Policy = nameof(CompanyActions.READ_COMPANY))]
         [HttpGet]
-        public override async Task<IActionResult> Get([FromQuery] GetOneSlideQuery request)
+        public override async Task<IActionResult> Get([FromQuery] GetOneCompanyQuery request)
         {
             return await base.Get(request);
         }
 
         [Authorize(Policy = nameof(CompanyActions.READ_COMPANY))]
         [HttpGet("list")]
-        public override Task<IActionResult> GetAll([FromQuery] BaseGetListQuery request)
+        public override async Task<IActionResult> GetAll([FromQuery] GetCompanyListQuery request)
         {
-            throw new NotImplementedException();
+            return await base.GetAll(request);
+        }
+
+        /// <summary>
+        /// Company details and logo for the public "About" and "Contacts" pages.
+        /// </summary>
+        [AllowAnonymous]
+        [HttpGet("public")]
+        public async Task<IActionResult> GetPublic()
+        {
+            var result = await _mediator.Send(new GetPublicCompanyQuery());
+            return Ok(result);
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using Application.Interfaces.Auths;
+﻿using Application.Authorization;
+using Application.Interfaces.Auths;
 using Application.Interfaces.Cachings;
 using Application.Interfaces.Files;
 using Application.Interfaces.Notifications;
@@ -77,6 +78,11 @@ namespace Persistance.Extentions
                 var redisOptions = ConfigurationOptions.Parse(configuration.GetConnectionString("Redis") ?? "localhost:6379");
                 // Keep the app running and retrying in the background when Redis is down.
                 redisOptions.AbortOnConnectFail = false;
+                // While disconnected, fail cache calls at once instead of queueing each one for 5 s;
+                // the cache is optional and callers fall back to the database.
+                redisOptions.BacklogPolicy = BacklogPolicy.FailFast;
+                redisOptions.AsyncTimeout = 1000;
+                redisOptions.SyncTimeout = 1000;
                 return ConnectionMultiplexer.Connect(redisOptions);
             });
             services.AddScoped<IRedisService, RedisService>();
@@ -124,13 +130,10 @@ namespace Persistance.Extentions
 
 
 
+            // One policy per permission; the list is static, so no service provider is built here.
             services.AddAuthorization(options =>
             {
-                var sp = services.BuildServiceProvider();
-                var permissionService = sp.GetRequiredService<IPermissionService>();
-                var allPermissions = permissionService.GetAllPermission().Result;
-
-                foreach (var perm in allPermissions)
+                foreach (var perm in PermissionCatalog.All)
                 {
                     options.AddPolicy(perm, policy => policy.RequireClaim("permission", perm));
                 }

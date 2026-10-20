@@ -3,14 +3,8 @@ using Application.Features.Slides.Commands.Delete;
 using Application.Features.Slides.Commands.Update;
 using Application.Features.Slides.Queries.GetList;
 using Application.Features.Slides.Queries.GetOne;
-using Application.Features.UserRoles.Commands.Create;
-using Application.Features.UserRoles.Commands.Delete;
-using Application.Features.UserRoles.Commands.Update;
-using Application.Features.UserRoles.Queries.GetList;
-using Application.Features.UserRoles.Queries.GetOne;
-using Application.Models.Requests.Abstractions;
+using Application.Features.Slides.Queries.GetPublicList;
 using Domain.Enums.Actions;
-using Domain.Enums.Permissions;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -61,6 +55,17 @@ namespace WebApi.Controllers
         public override async Task<IActionResult> GetAll([FromQuery] GetSlideListQuery request)
         {
             return await base.GetAll(request);
+        }
+
+        /// <summary>
+        /// Home page carousel: every slide with its image URL, in display order.
+        /// </summary>
+        [AllowAnonymous]
+        [HttpGet("public")]
+        public async Task<IActionResult> GetPublic()
+        {
+            var result = await _mediator.Send(new GetPublicSlideListQuery());
+            return Ok(result);
         }
     }
 }

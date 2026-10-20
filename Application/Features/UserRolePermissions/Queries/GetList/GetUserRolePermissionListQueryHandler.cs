@@ -27,7 +27,6 @@ namespace Application.Features.UserRolePermissions.Queries.GetList
                 predicate = request.Filters.BuildPredicate<UserRolePermission>();
             }
             return await _userRolePermissionService.GetAllAsync(predicate, request.PageIndex, request.PageSize, cancellationToken);
-            throw new NotImplementedException();
         }
     }
 }

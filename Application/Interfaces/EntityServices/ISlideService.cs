@@ -1,5 +1,6 @@
 ﻿using Application.Interfaces.EntityServices.Abstractions;
 using Application.Models.Dtos.Slides;
+using Application.Models.Results;
 using Application.Models.ViewModels.Slides;
 using Domain.Entities;
 using System;
@@ -16,5 +17,9 @@ namespace Application.Interfaces.EntityServices
                                 UpdateSlideDto,
                                 SlideViewModel>
     {
+        /// <summary>
+        /// Slides for the home page carousel, in display order; no permission required.
+        /// </summary>
+        Task<ResponseModel<List<SlideViewModel>>> GetPublicListAsync(CancellationToken cancellationToken = default);
     }
 }

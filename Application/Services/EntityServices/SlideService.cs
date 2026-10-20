@@ -10,6 +10,7 @@ using AutoMapper;
 using Domain.Entities;
 using Domain.Enums;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -98,18 +99,8 @@ namespace Application.Services.EntityServices
 
         public override async Task<ResponseModel<SlideViewModel?>> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            string entityTypeName = typeof(Slide).Name.ToUpper();
-            if (!await _permissionService.Check($"{OperationType.READ}_{entityTypeName}"))
-                throw new UnauthorizedAccessException("You do not have permission to create this entity.");
-
-            var entity = await _repository.GetByIdAsync(id, cancellationToken)
-                                ?? throw new KeyNotFoundException("Entity not found");
-
-            var result = _mapper.Map<SlideViewModel>(entity);
-
-            result.UploadedFile = (await _uploadedFileService.GetByIdAsync(entity.UploadedFileId, cancellationToken)).Data;
-
-            return ResponseModel<SlideViewModel?>.Ok(result);
+            // GetAsync checks the READ permission.
+            return await GetAsync(x => x.Id == id, cancellationToken);
         }
 
         public override async Task<ResponseModel<SlideViewModel?>> GetAsync(Expression<Func<Slide, bool>> predicate, CancellationToken cancellationToken = default)
@@ -118,13 +109,45 @@ namespace Application.Services.EntityServices
             if (!await _permissionService.Check($"{OperationType.READ}_{entityTypeName}"))
                 throw new UnauthorizedAccessException("You do not have permission to create this entity.");
 
-            var entity = await _repository.GetAsync(predicate, cancellationToken)
+            // The image is loaded with the slide: READ_SLIDE is enough, READ_UPLOADEDFILE is not required.
+            var entity = await _repository.Query(predicate, cancellationToken)
+                                .Include(x => x.UploadedFile)
+                                .FirstOrDefaultAsync(cancellationToken)
                                 ?? throw new KeyNotFoundException("Entity not found");
 
-            var result = _mapper.Map<SlideViewModel>(entity);
+            return ResponseModel<SlideViewModel?>.Ok(_mapper.Map<SlideViewModel>(entity));
+        }
 
-            result.UploadedFile = (await _uploadedFileService.GetByIdAsync(entity.UploadedFileId, cancellationToken)).Data;
-            return ResponseModel<SlideViewModel?>.Ok(result);
+        public override async Task<ResponseModel<List<SlideViewModel>>> GetAllAsync(Expression<Func<Slide, bool>>? predicate = null, int pageIndex = 0, int pageSize = 10, CancellationToken cancellationToken = default)
+        {
+            string entityTypeName = typeof(Slide).Name.ToUpper();
+            if (!await _permissionService.Check($"{OperationType.READ}_{entityTypeName}"))
+                throw new UnauthorizedAccessException("You do not have permission to read this entity.");
+
+            var query = _repository.Query(predicate, cancellationToken);
+            var totalCount = await query.CountAsync(cancellationToken);
+            var slides = await query.Include(x => x.UploadedFile)
+                                    .OrderBy(x => x.Order)
+                                    .ThenBy(x => x.CreatedAt)
+                                    .Skip(pageIndex * pageSize)
+                                    .Take(pageSize)
+                                    .ToListAsync(cancellationToken);
+
+            return ResponseModel<List<SlideViewModel>>.Ok(_mapper.Map<List<SlideViewModel>>(slides), pageIndex, pageSize, totalCount);
+        }
+
+        /// <summary>
+        /// Slides for the home page carousel, in display order. Open to anonymous visitors.
+        /// </summary>
+        public async Task<ResponseModel<List<SlideViewModel>>> GetPublicListAsync(CancellationToken cancellationToken = default)
+        {
+            var slides = await _repository.Query(cancellationToken: cancellationToken)
+                                .Include(x => x.UploadedFile)
+                                .OrderBy(x => x.Order)
+                                .ThenBy(x => x.CreatedAt)
+                                .ToListAsync(cancellationToken);
+
+            return ResponseModel<List<SlideViewModel>>.Ok(_mapper.Map<List<SlideViewModel>>(slides));
         }
     }
 }

@@ -6,6 +6,7 @@ using Application.Models.Dtos.Auths;
 using Application.Models.Results;
 using Application.Models.ViewModels.Auths;
 using AutoMapper;
+using Domain.Constants;
 using Domain.Entities;
 using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -30,7 +31,6 @@ namespace Application.Services.Auths
         ICurrentUserService currentUserService
         ) : IAuthService
     {
-        private const string DefaultRoleName = "DEFAULT_USER";
         private const string InvalidCredentialsMessage = "Invalid login or password.";
         private const string InvalidRefreshTokenMessage = "Session has expired. Sign in again.";
 
@@ -261,7 +261,7 @@ namespace Application.Services.Auths
         /// </summary>
         private async Task<Guid?> GetDefaultRoleIdAsync(CancellationToken cancellationToken)
         {
-            var role = await _userRoleRepository.GetAsync(x => x.Name == DefaultRoleName, cancellationToken);
+            var role = await _userRoleRepository.GetAsync(x => x.Name == SystemRoles.DefaultUser, cancellationToken);
             return role?.Id;
         }
 

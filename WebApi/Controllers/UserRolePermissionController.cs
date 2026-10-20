@@ -31,13 +31,12 @@ namespace WebApi.Controllers
             return await base.Post(command);
         }
 
-        [Authorize(Policy = nameof(UserRolePermissionActions.UPDATE_USERROLEPERMISSION))]
-        [HttpPut]
-        public override async Task<IActionResult> Put([FromForm] UpdateUserRolePermissionDto command)
-        {
-            await Task.CompletedTask;
-            return BadRequest("Not implemented yet.");
-        }
+        /// <summary>
+        /// A role-permission pair has nothing to edit: to change it, delete it and create another.
+        /// </summary>
+        [NonAction]
+        public override Task<IActionResult> Put([FromForm] UpdateUserRolePermissionDto command)
+            => throw new NotSupportedException();
 
         [Authorize(Policy = nameof(UserRolePermissionActions.DELETE_USERROLEPERMISSION))]
         [HttpDelete]

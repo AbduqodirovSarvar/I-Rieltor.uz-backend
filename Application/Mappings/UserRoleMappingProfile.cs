@@ -1,4 +1,4 @@
-﻿using Application.Models.Dtos.Users;
+﻿using Application.Models.Dtos.UserRoles;
 using Application.Models.ViewModels.UserRoles;
 using AutoMapper;
 using Domain.Entities;
@@ -15,8 +15,8 @@ namespace Application.Mappings
         public UserRoleMappingProfile()
         {
             CreateMap<UserRole, UserRoleViewModel>().ReverseMap();
-            CreateMap<CreateUserDto, UserRole>().ReverseMap();
-            CreateMap<UpdateUserDto, UserRole>().ReverseMap();
+            CreateMap<CreateUserRoleDto, UserRole>();
+            CreateMap<UpdateUserRoleDto, UserRole>();
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using Application.Interfaces.Auths;
 using Domain.Behaviours;
+using Domain.Constants;
 using Domain.Entities;
 using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -39,13 +40,13 @@ namespace Persistance.Data.Seeds
         private static async Task<UserRole> SeedRolesAsync(AppDbContext context)
         {
             var defaultRole = await context.UserRoles
-                .FirstOrDefaultAsync(x => x.Name == "DEFAULT_USER");
+                .FirstOrDefaultAsync(x => x.Name == SystemRoles.DefaultUser);
 
             if (defaultRole == null)
             {
                 defaultRole = new UserRole
                 {
-                    Name = "DEFAULT_USER",
+                    Name = SystemRoles.DefaultUser,
                     Description = "Default role for any user"
                 };
 
@@ -53,13 +54,13 @@ namespace Persistance.Data.Seeds
             }
 
             var superAdminRole = await context.UserRoles
-                .FirstOrDefaultAsync(x => x.Name == "SUPER_ADMIN");
+                .FirstOrDefaultAsync(x => x.Name == SystemRoles.SuperAdmin);
 
             if (superAdminRole == null)
             {
                 superAdminRole = new UserRole
                 {
-                    Name = "SUPER_ADMIN",
+                    Name = SystemRoles.SuperAdmin,
                     Description = "Super Administrator with full permissions"
                 };
 
