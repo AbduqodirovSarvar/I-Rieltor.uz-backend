@@ -48,12 +48,15 @@ namespace Application.Services.EntityServices
 
         public override async Task<ResponseModel<UploadedFileViewModel>> UpdateAsync(UpdateUploadedFileDto entityUpdateDto, CancellationToken cancellationToken = default)
         {
-            var entity = _mapper.Map<UploadedFile>(entityUpdateDto);
+            var entity = await _repository.GetAsync(x => x.Id == entityUpdateDto.Id, cancellationToken)
+                                ?? throw new KeyNotFoundException("Entity not found");
+
             if (entityUpdateDto.File != null)
             {
-                var newFile = await _fileService.SaveFileAsync(entityUpdateDto.File, entity.EntityName.ToLower())
+                var category = entity.EntityName.ToLower();
+                var newFile = await _fileService.SaveFileAsync(entityUpdateDto.File, category)
                                     ?? throw new FileLoadException("File cannot saved");
-                await _fileService.DeleteFileAsync(entity.Name, entity.EntityName.ToLower());
+                await _fileService.DeleteFileAsync(entity.Name, category);
                 entity.Size = newFile.Size;
                 entity.Url = newFile.Url;
                 entity.Name = newFile.Name;

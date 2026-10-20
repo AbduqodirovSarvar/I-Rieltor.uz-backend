@@ -19,14 +19,7 @@ namespace Application.Features.Users.Commands.Create
         private readonly IUserService _userService = userService;
         public async Task<ResponseModel<UserViewModel>> Handle(CreateUserCommand request, CancellationToken cancellationToken)
         {
-            var userExists = await _userService.ExistsAsync(x => x.Login == request.Login
-                                                           || x.Email == request.Email
-                                                           || x.INNPINFL == request.INNPINFL,
-                                                           cancellationToken);
-            if (userExists.Data)
-            {
-                throw new InvalidOperationException("User with this login, email, or INNPINFL already exists.");
-            }
+            // Uniqueness of login, email, INNPINFL and phone is checked inside the service.
             return await _userService.CreateAsync(request, cancellationToken);
         }
     }

@@ -68,7 +68,9 @@ namespace Domain.Entities
 
         /// <summary>
         /// Parolning hash qiymati (PBKDF2). Parolning o'zi hech qachon saqlanmaydi.
+        /// Ro'yxat filtrlarida ishlatib bo'lmaydi.
         /// </summary>
+        [NotFilterable]
         public string PasswordHash { get; set; } = string.Empty;
 
         /// <summary>

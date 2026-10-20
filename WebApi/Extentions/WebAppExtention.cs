@@ -11,28 +11,28 @@ namespace WebApi.Extentions
     {
         public static async Task AddWebAppExtention(this WebApplication app)
         {
-            app.UseSwagger();
-            app.UseSwaggerUI(c =>
-            {
-                c.SwaggerEndpoint("/swagger/v1/swagger.json", "I-Rieltor.uz API V1");
-                c.RoutePrefix = string.Empty;
-            });
-            app.UseHttpsRedirection();
-            app.UseUploadedFiles();
-            app.UseAuthentication();
-            app.UseAuthorization();
-            app.UseCors("AddCors");
-            app.MapControllers();
+            app.UseExceptionHandler();
+
+            // API documentation is exposed only on developer machines.
             if (app.Environment.IsDevelopment())
             {
+                app.UseSwagger();
+                app.UseSwaggerUI(c =>
+                {
+                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "I-Rieltor.uz API V1");
+                    c.RoutePrefix = string.Empty;
+                });
                 app.MapOpenApi();
             }
 
             app.UseHttpsRedirection();
-
+            app.UseCors(DepencyInjection.CorsPolicy);
+            app.UseUploadedFiles();
+            app.UseAuthentication();
             app.UseAuthorization();
-
+            app.UseRateLimiter();
             app.MapControllers();
+
             await app.UpdateMigration();
             await app.SeedAsync();
         }

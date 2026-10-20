@@ -15,6 +15,9 @@ namespace Persistance.Services.Repositories
     public class UserRepository(AppDbContext context, IRedisService redisService)
         : GenericRepository<User>(context, redisService), IUserRepository
     {
+        // Users carry PasswordHash, so they are never written to Redis.
+        protected override bool UseCache => false;
+
         public async Task<bool> CheckLogin(string login, CancellationToken cancellationToken = default)
         {
             return await _dbSet.AsNoTracking().AnyAsync(x => x.Login == login, cancellationToken);
@@ -22,27 +25,37 @@ namespace Persistance.Services.Repositories
 
         public async Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
         {
-            var result = await _redisService.GetAsync<User>(email);
-            if (result != null)
-                return result;
-
-            result = await _dbSet.AsNoTracking().FirstOrDefaultAsync(x => x.Email == email, cancellationToken);
-            if (result != null)
-                await _redisService.SetAsync(email, result);
-
-            return result;
+            return await _dbSet.AsNoTracking().FirstOrDefaultAsync(x => x.Email == email, cancellationToken);
         }
 
         public async Task<User?> GetByUsernameAsync(string login, CancellationToken cancellationToken = default)
         {
-            var result = await _redisService.GetAsync<User>(login);
-            if (result != null)
-                return result;
+            return await _dbSet.AsNoTracking().FirstOrDefaultAsync(x => x.Login == login, cancellationToken);
+        }
 
-            result = await _dbSet.AsNoTracking().FirstOrDefaultAsync(x => x.Login == login, cancellationToken);
-            if (result != null)
-                await _redisService.SetAsync(login, result);
-            return result;
+        public async Task<bool> ExistsWithAnyAsync(
+            string? login,
+            string? email,
+            string? innpinfl,
+            string? phone,
+            Guid? exceptUserId = null,
+            CancellationToken cancellationToken = default)
+        {
+            login = string.IsNullOrWhiteSpace(login) ? null : login;
+            email = string.IsNullOrWhiteSpace(email) ? null : email;
+            innpinfl = string.IsNullOrWhiteSpace(innpinfl) ? null : innpinfl;
+            phone = string.IsNullOrWhiteSpace(phone) ? null : phone;
+
+            if (login == null && email == null && innpinfl == null && phone == null)
+                return false;
+
+            return await _dbSet.AsNoTracking().AnyAsync(x =>
+                (exceptUserId == null || x.Id != exceptUserId) &&
+                ((login != null && x.Login == login) ||
+                 (email != null && x.Email == email) ||
+                 (innpinfl != null && x.INNPINFL == innpinfl) ||
+                 (phone != null && x.Phone == phone)),
+                cancellationToken);
         }
     }
 }

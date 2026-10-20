@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using Persistance.Data;
 using Persistance.Data.Interceptors;
@@ -56,14 +57,23 @@ namespace Persistance.Extentions
                 if (!Directory.Exists(webRootPath))
                     Directory.CreateDirectory(webRootPath);
 
-                return new FileService(webRootPath, configuration["FileStorage:PublicBaseUrl"]);
+                return new FileService(
+                    webRootPath,
+                    configuration["FileStorage:PublicBaseUrl"],
+                    configuration.GetValue("FileStorage:MaxFileSizeMb", 20));
             });
 
             services.Configure<SmtpConfiguration>(configuration.GetSection(SmtpConfiguration.SectionName));
             services.Configure<DefaultAdminConfiguration>(configuration.GetSection(DefaultAdminConfiguration.SectionName));
             services.AddScoped<IEmailService, EmailService>();
 
-            services.AddSingleton<IConnectionMultiplexer>(sp => ConnectionMultiplexer.Connect(configuration.GetConnectionString("Redis") ?? "localhost:6379"));
+            services.AddSingleton<IConnectionMultiplexer>(sp =>
+            {
+                var redisOptions = ConfigurationOptions.Parse(configuration.GetConnectionString("Redis") ?? "localhost:6379");
+                // Keep the app running and retrying in the background when Redis is down.
+                redisOptions.AbortOnConnectFail = false;
+                return ConnectionMultiplexer.Connect(redisOptions);
+            });
             services.AddScoped<IRedisService, RedisService>();
 
             var connectionString = configuration.GetConnectionString("PostgreSqlConnection");
@@ -77,6 +87,10 @@ namespace Persistance.Extentions
                 var interceptor = serviceProvider.GetRequiredService<AuditableEntitySaveChangesInterceptor>();
                 options.UseNpgsql(connectionString)
                        .AddInterceptors(interceptor);
+
+                // Logs SQL parameter values (password hashes, personal data), so never outside development.
+                if (serviceProvider.GetRequiredService<IWebHostEnvironment>().IsDevelopment())
+                    options.EnableSensitiveDataLogging();
             });
 
             services.Configure<JWTConfiguration>(configuration.GetSection("JWTConfiguration"));

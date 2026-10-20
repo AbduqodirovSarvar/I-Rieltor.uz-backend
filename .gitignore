@@ -365,3 +365,7 @@ FodyWeavers.xsd
 .env
 .env.*
 !.env.example
+
+# User uploads and soft-deleted files are runtime data, not source
+WebApi/wwwroot/uploads/
+WebApi/wwwroot/deleted/

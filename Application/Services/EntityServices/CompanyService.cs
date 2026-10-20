@@ -64,26 +64,30 @@ namespace Application.Services.EntityServices
             if (!await _permissionService.Check($"{OperationType.UPDATE}_{entityTypeName}"))
                 throw new UnauthorizedAccessException("You do not have permission to create this entity.");
 
-            var entity = _mapper.Map<Company>(entityUpdateDto);
+            var entity = await _repository.GetAsync(x => x.Id == entityUpdateDto.Id, cancellationToken)
+                                ?? throw new KeyNotFoundException("Entity not found");
+            _mapper.Map(entityUpdateDto, entity);
 
-            if (entityUpdateDto.Logo != null) 
+            var oldLogoFileId = entity.LogoFileId;
+            if (entityUpdateDto.Logo != null)
             {
                 var file = (await _uploadedFileService.CreateAsync(new CreateUploadedFileDto()
                 {
                     File = entityUpdateDto.Logo,
                     Description = entityUpdateDto.Description,
-                    Alt = entityUpdateDto.Name
+                    Alt = entityUpdateDto.Name,
+                    EntityName = entityTypeName.ToLower()
                 }, cancellationToken)).Data ?? throw new InvalidOperationException();
 
-                if(entity.LogoFileId != null)
-                {
-                    await _uploadedFileService.DeleteAsync(entity.LogoFileId ?? Guid.Empty, cancellationToken);
-                }
                 entity.LogoFileId = file.Id;
             }
 
             var result = await _repository.UpdateAsync(entity, cancellationToken)
                                 ?? throw new InvalidOperationException("Failed to update entity.");
+
+            // The old logo can only be removed after the company stops referencing it (FK).
+            if (entityUpdateDto.Logo != null && oldLogoFileId != null)
+                await _uploadedFileService.DeleteAsync(oldLogoFileId.Value, cancellationToken);
 
             return ResponseModel<CompanyViewModel>.Ok(_mapper.Map<CompanyViewModel>(result));
         }

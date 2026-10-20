@@ -7,13 +7,16 @@ using Application.Features.Auths.Commands.ResetViaEimzo;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.Tasks;
 using WebApi.Controllers.Abstractions;
+using WebApi.Extentions;
 
 namespace WebApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [EnableRateLimiting(DepencyInjection.AuthRateLimitPolicy)]
     public class AuthController(IMediator mediator) : BaseController(mediator)
     {
         [HttpPost("sign-in")]

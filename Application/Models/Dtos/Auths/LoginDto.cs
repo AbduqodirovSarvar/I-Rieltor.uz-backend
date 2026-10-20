@@ -17,11 +17,10 @@ namespace Application.Models.Dtos.Auths
         public string Login { get; init; } = null!;
 
         /// <summary>
-        /// The user's password.
-        /// Must satisfy the system's password validation rules.
+        /// The user's password. Not checked against the password policy here:
+        /// sign-in only compares it with the stored hash.
         /// </summary>
         [Required(ErrorMessage = "Password is required.")]
-        [PasswordValidation]
         public string Password { get; init; } = null!;
     }
 }

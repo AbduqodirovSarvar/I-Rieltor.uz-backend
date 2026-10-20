@@ -16,6 +16,7 @@ namespace Application.Models.Dtos.Users
         public string FirstName { get; set; } = string.Empty;
         public string LastName { get; set; } = string.Empty;
         public string? MiddleName { get; set; } = null;
+        [RegularExpression(@"^[A-Za-z][A-Za-z0-9_.]{2,49}$", ErrorMessage = "Login must start with a letter and contain 3-50 letters, digits, '_' or '.'.")]
         public string? Login { get; set; } = null;
         public string? LegalName { get; set; } = null;
         [INNPINFLValidation]

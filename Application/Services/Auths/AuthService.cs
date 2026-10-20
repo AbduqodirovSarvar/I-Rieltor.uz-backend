@@ -24,16 +24,22 @@ namespace Application.Services.Auths
         IUserRepository userRepository,
         IMapper mapper,
         IEimzoService eimzoService,
-        IUserRoleService userRoleService
+        IUserRoleRepository userRoleRepository
         ) : IAuthService
     {
+        private const string DefaultRoleName = "DEFAULT_USER";
+        private const string InvalidCredentialsMessage = "Invalid login or password.";
+
+        // Hash used when the login is unknown, so a failed sign-in takes the same time either way.
+        private static string? _dummyPasswordHash;
+
         private readonly ITokenService _tokenService = tokenService;
         private readonly IEmailService _emailService = emailService;
         private readonly IHashService _hashService = hashService;
         private readonly IUserRepository _userRepository = userRepository;
         private readonly IMapper _mapper = mapper;
         private readonly IEimzoService _eimzoService = eimzoService;
-        private readonly IUserRoleService _userRoleService = userRoleService;
+        private readonly IUserRoleRepository _userRoleRepository = userRoleRepository;
         public async Task<TokenViewModel> LoginAsync(LoginDto loginDto, CancellationToken cancellationToken)
         {
             var user = await _userRepository
@@ -43,12 +49,17 @@ namespace Application.Services.Auths
                                     x.INNPINFL == loginDto.Login, cancellationToken)
                                 .Include(x => x.UserRole)
                                     .ThenInclude(x => x.Permissions)
-                                .FirstOrDefaultAsync(cancellationToken)
-                                ?? throw new UnauthorizedAccessException("Invalid login or password.");
+                                .FirstOrDefaultAsync(cancellationToken);
+
+            if (user == null)
+            {
+                _hashService.Verify(loginDto.Password, _dummyPasswordHash ??= _hashService.Hash(Guid.NewGuid().ToString()));
+                throw new UnauthorizedAccessException(InvalidCredentialsMessage);
+            }
 
             if (!_hashService.Verify(loginDto.Password, user.PasswordHash))
             {
-                throw new UnauthorizedAccessException("Invalid username or password.");
+                throw new UnauthorizedAccessException(InvalidCredentialsMessage);
             }
 
             var claims = new List<Claim>
@@ -73,17 +84,14 @@ namespace Application.Services.Auths
 
         public async Task<bool> RegisterAsync(RegisterDto registerDto, CancellationToken cancellationToken)
         {
-            var userExists = await _userRepository.AnyAsync(x => x.Login == registerDto.Login
-                                                           || x.Email == registerDto.Email
-                                                           || x.INNPINFL == registerDto.INNPINFL,
-                                                           cancellationToken);
-            if (userExists)
+            if (await _userRepository.ExistsWithAnyAsync(registerDto.Login, registerDto.Email, null, registerDto.Phone, cancellationToken: cancellationToken))
             {
-                throw new InvalidOperationException("User with this login, email, or INNPINFL already exists.");
+                throw new InvalidOperationException("User with this login, email or phone already exists.");
             }
 
             var user = _mapper.Map<User>(registerDto);
             user.PasswordHash = _hashService.Hash(registerDto.Password);
+            user.UserRoleId = await GetDefaultRoleIdAsync(cancellationToken);
 
             return await _userRepository.CreateAsync(user, cancellationToken) != null;
         }
@@ -166,11 +174,19 @@ namespace Application.Services.Auths
                 user.FullName = verifyResult.LegalName!;
             }
 
-            var defaultRoleResult = await _userRoleService.GetAsync(x => x.Name == "DEFAULT_USER", cancellationToken);
-
-            user.UserRoleId = defaultRoleResult.Data?.Id;
+            user.UserRoleId = await GetDefaultRoleIdAsync(cancellationToken);
 
             return await _userRepository.CreateAsync(user, cancellationToken) != null;
+        }
+
+        /// <summary>
+        /// Read straight from the repository: registration is anonymous, so the
+        /// permission-checked role service would always refuse.
+        /// </summary>
+        private async Task<Guid?> GetDefaultRoleIdAsync(CancellationToken cancellationToken)
+        {
+            var role = await _userRoleRepository.GetAsync(x => x.Name == DefaultRoleName, cancellationToken);
+            return role?.Id;
         }
 
         public Task<bool> ResetAsync(ResetPasswordDto resetPasswordDto, CancellationToken cancellationToken)

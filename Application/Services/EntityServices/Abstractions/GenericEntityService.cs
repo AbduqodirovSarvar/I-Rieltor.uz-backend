@@ -50,7 +50,11 @@ namespace Application.Services.EntityServices.Abstractions
             if (!await _permissionService.Check($"{OperationType.UPDATE}_{entityTypeName}"))
                 throw new UnauthorizedAccessException("You do not have permission to create this entity.");
 
-            var entity = _mapper.Map<TEntity>(entityUpdateDto);
+            // Load the stored entity and apply only the DTO fields, so fields the DTO lacks
+            // (PasswordHash, CreatedAt, CreatedBy, foreign keys) keep their values.
+            var entity = await _repository.GetAsync(x => x.Id == entityUpdateDto.Id, cancellationToken)
+                                ?? throw new KeyNotFoundException("Entity not found");
+            _mapper.Map(entityUpdateDto, entity);
 
             var result = await _repository.UpdateAsync(entity, cancellationToken)
                                 ?? throw new InvalidOperationException("Failed to update entity.");

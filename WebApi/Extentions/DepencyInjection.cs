@@ -1,22 +1,72 @@
 ﻿using Application.Extentions;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.OpenApi.Models;
 using Persistance.Extentions;
+using System.Threading.RateLimiting;
+using WebApi.Handlers;
 
 namespace WebApi.Extentions
 {
     public static class DepencyInjection
     {
-        public static void AdApiDepencies(this WebApplicationBuilder builder)   
+        public const string CorsPolicy = "Frontend";
+        public const string AuthRateLimitPolicy = "auth";
+
+        public static void AdApiDepencies(this WebApplicationBuilder builder)
         {
             builder.Services.AddHttpContextAccessor();
             builder.Services.AddApplicationServices();
             builder.Services.AddPersistance(builder.Configuration);
             builder.Services.AddSwagger();
+            builder.Services.AddFrontendCors(builder.Configuration);
+            builder.Services.AddAuthRateLimiting();
+            builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+            builder.Services.AddProblemDetails();
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddControllers();
             builder.Services.AddOpenApi();
             builder.AddUploadFolders();
+        }
+
+        /// <summary>
+        /// Only the web site and admin panel origins listed in Cors:AllowedOrigins may call the API from a browser.
+        /// </summary>
+        private static IServiceCollection AddFrontendCors(this IServiceCollection services, IConfiguration configuration)
+        {
+            var allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+
+            services.AddCors(o => o.AddPolicy(CorsPolicy, policy =>
+            {
+                policy.WithOrigins(allowedOrigins)
+                      .AllowAnyMethod()
+                      .AllowAnyHeader();
+            }));
+
+            return services;
+        }
+
+        /// <summary>
+        /// Limits sign-in, sign-up and password reset attempts per client IP to slow down brute force.
+        /// Behind a reverse proxy, forwarded headers must be enabled so RemoteIpAddress is the real client.
+        /// </summary>
+        private static IServiceCollection AddAuthRateLimiting(this IServiceCollection services)
+        {
+            services.AddRateLimiter(options =>
+            {
+                options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+                options.AddPolicy(AuthRateLimitPolicy, httpContext =>
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                        _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = 10,
+                            Window = TimeSpan.FromMinutes(1),
+                            QueueLimit = 0
+                        }));
+            });
+
+            return services;
         }
 
         private static IServiceCollection AddSwagger(this IServiceCollection services)
@@ -54,13 +104,6 @@ namespace WebApi.Extentions
                     }
                 });
             });
-
-            services.AddCors(o => o.AddPolicy("AddCors", builder =>
-            {
-                builder.AllowAnyOrigin()
-                       .AllowAnyMethod()
-                       .AllowAnyHeader();
-            }));
 
             return services;
         }

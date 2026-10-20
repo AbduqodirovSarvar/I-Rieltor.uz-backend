@@ -51,8 +51,11 @@ namespace Persistance.Data.Interceptors
                 }
                 else if (entry.State == EntityState.Modified)
                 {
-                    if (currentUserService != null)
-                        entry.Entity.UpdatedBy ??= currentUserService?.UserId;
+                    // Creation audit is immutable, even when an update marks every column as modified.
+                    entry.Property(x => x.CreatedAt).IsModified = false;
+                    entry.Property(x => x.CreatedBy).IsModified = false;
+
+                    entry.Entity.UpdatedBy = currentUserService?.UserId;
                     entry.Entity.UpdatedAt = DateTime.UtcNow;
                 }
             }

@@ -60,22 +60,21 @@ namespace Application.Services.EntityServices
             if (!await _permissionService.Check($"{OperationType.UPDATE}_{entityTypeName}"))
                 throw new UnauthorizedAccessException("You do not have permission to create this entity.");
 
-            var entity = _mapper.Map<Slide>(entityUpdateDto);
+            var entity = await _repository.GetAsync(x => x.Id == entityUpdateDto.Id, cancellationToken)
+                                ?? throw new KeyNotFoundException("Entity not found");
+            _mapper.Map(entityUpdateDto, entity);
 
-            if(entityUpdateDto.File != null)
+            if (entityUpdateDto.File != null)
             {
-                var file = (await _uploadedFileService.UpdateAsync(new UpdateUploadedFileDto()
+                // Replaces the content of the slide's existing file record; its Id stays the same.
+                _ = (await _uploadedFileService.UpdateAsync(new UpdateUploadedFileDto()
                 {
                     Id = entity.UploadedFileId,
                     File = entityUpdateDto.File,
                     Description = entityUpdateDto.Content,
                     Alt = entityUpdateDto.Title
                 }, cancellationToken)).Data ?? throw new InvalidOperationException("Failed to update entity.");
-
-                entity.UploadedFileId = file.Id;
             }
-
-            
 
             var result = await _repository.UpdateAsync(entity, cancellationToken)
                                 ?? throw new InvalidOperationException("Failed to update entity.");
@@ -110,7 +109,7 @@ namespace Application.Services.EntityServices
 
             result.UploadedFile = (await _uploadedFileService.GetByIdAsync(entity.UploadedFileId, cancellationToken)).Data;
 
-            return ResponseModel<SlideViewModel?>.Ok();
+            return ResponseModel<SlideViewModel?>.Ok(result);
         }
 
         public override async Task<ResponseModel<SlideViewModel?>> GetAsync(Expression<Func<Slide, bool>> predicate, CancellationToken cancellationToken = default)
