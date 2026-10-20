@@ -1,4 +1,5 @@
-﻿using Domain.Abstractions;
+﻿using Domain.Behaviours;
+using Domain.Abstractions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,11 +16,13 @@ namespace Domain.Entities
         /// <summary>
         /// Rolning noyob nomi (masalan "SUPER_ADMIN").
         /// </summary>
+        [Searchable]
         public string Name { get; set; } = string.Empty;
 
         /// <summary>
         /// Rol nimaga mo'ljallangani haqida izoh (ixtiyoriy).
         /// </summary>
+        [Searchable]
         public string? Description { get; set; } = null;
 
         /// <summary>

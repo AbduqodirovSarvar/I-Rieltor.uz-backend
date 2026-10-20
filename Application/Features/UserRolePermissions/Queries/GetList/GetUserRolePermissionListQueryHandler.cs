@@ -21,12 +21,9 @@ namespace Application.Features.UserRolePermissions.Queries.GetList
         private readonly IUserRolePermissionService _userRolePermissionService = userRolePermissionService;
         public async Task<ResponseModel<List<UserRolePermissionViewModel>>> Handle(GetUserRolePermissionListQuery request, CancellationToken cancellationToken)
         {
-            Expression<Func<UserRolePermission, bool>>? predicate = null;
-            if (request.Filters != null && request.Filters.Any())
-            {
-                predicate = request.Filters.BuildPredicate<UserRolePermission>();
-            }
-            return await _userRolePermissionService.GetAllAsync(predicate, request.PageIndex, request.PageSize, cancellationToken);
+            var predicate = request.BuildPredicate<UserRolePermission>();
+            var orderBy = request.BuildOrderBy<UserRolePermission>();
+            return await _userRolePermissionService.GetAllAsync(predicate, request.PageIndex, request.PageSize, orderBy, cancellationToken);
         }
     }
 }

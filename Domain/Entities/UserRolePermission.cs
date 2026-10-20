@@ -1,4 +1,5 @@
-﻿using Domain.Abstractions;
+﻿using Domain.Behaviours;
+using Domain.Abstractions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,6 +28,7 @@ namespace Domain.Entities
         /// Ruxsat nomi: <c>Domain.Enums.Actions</c> enum'laridagi qiymatlardan biri
         /// (masalan "CREATE_USER", "READ_SLIDE").
         /// </summary>
+        [Searchable]
         public string Permission { get; set; } = "NONE";
     }
 }

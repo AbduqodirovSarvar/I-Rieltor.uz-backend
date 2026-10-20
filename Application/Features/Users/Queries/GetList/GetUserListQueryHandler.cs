@@ -20,12 +20,9 @@ namespace Application.Features.Users.Queries.GetList
         private readonly IUserService _userService = userService;
         public async Task<ResponseModel<List<UserViewModel>>> Handle(GetUserListQuery request, CancellationToken cancellationToken)
         {
-            Expression<Func<User, bool>>? predicate = null;
-            if (request.Filters != null && request.Filters.Any())
-            {
-                predicate = request.Filters.BuildPredicate<User>();
-            }
-            return await _userService.GetAllAsync(predicate, request.PageIndex, request.PageSize, cancellationToken);
+            var predicate = request.BuildPredicate<User>();
+            var orderBy = request.BuildOrderBy<User>();
+            return await _userService.GetAllAsync(predicate, request.PageIndex, request.PageSize, orderBy, cancellationToken);
         }
     }
 }

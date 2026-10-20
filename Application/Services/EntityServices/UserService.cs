@@ -23,7 +23,8 @@ namespace Application.Services.EntityServices
                            IMapper mapper,
                            IHashService hashService,
                            IRefreshTokenRepository refreshTokenRepository,
-                           ICurrentUserService currentUserService)
+                           ICurrentUserService currentUserService,
+                           IUnitOfWork unitOfWork)
         : GenericEntityService<User,
                                CreateUserDto,
                                UpdateUserDto,
@@ -33,6 +34,18 @@ namespace Application.Services.EntityServices
         private readonly IHashService _hashService = hashService;
         private readonly IRefreshTokenRepository _refreshTokenRepository = refreshTokenRepository;
         private readonly ICurrentUserService _currentUserService = currentUserService;
+        private readonly IUnitOfWork _unitOfWork = unitOfWork;
+
+        /// <summary>
+        /// Soft-deletes the user and ends all their sessions; a still valid access token stops working once it expires.
+        /// </summary>
+        public override Task<ResponseModel<bool>> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+            => _unitOfWork.ExecuteAsync(async () =>
+            {
+                var result = await base.DeleteAsync(id, cancellationToken);
+                await _refreshTokenRepository.RevokeAllActiveAsync(id, DateTime.UtcNow, cancellationToken);
+                return result;
+            }, cancellationToken);
 
         public override async Task<ResponseModel<UserViewModel>> CreateAsync(CreateUserDto entityCreateDto, CancellationToken cancellationToken = default)
         {

@@ -23,7 +23,8 @@ namespace Persistance.Data.EntityTypeConfigurations
             builder.Property(urp => urp.Permission)
                 .IsRequired();
             builder.HasIndex(urp => new { urp.UserRoleId, urp.Permission })
-                .IsUnique();
+                .IsUnique()
+                .HasFilter(NotDeletedSql);
 
         }
     }

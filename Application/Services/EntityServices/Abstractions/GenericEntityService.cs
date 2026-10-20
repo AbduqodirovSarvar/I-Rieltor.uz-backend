@@ -84,13 +84,15 @@ namespace Application.Services.EntityServices.Abstractions
             return ResponseModel<bool>.Ok(entity != null);
         }
 
-        public virtual async Task<ResponseModel<List<TEntityViewModel>>> GetAllAsync(Expression<Func<TEntity, bool>>? predicate = null, int pageIndex = 0, int pageSize = 10, CancellationToken cancellationToken = default)
+        public virtual async Task<ResponseModel<List<TEntityViewModel>>> GetAllAsync(Expression<Func<TEntity, bool>>? predicate = null, int pageIndex = 0, int pageSize = 10, Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>>? orderBy = null, CancellationToken cancellationToken = default)
         {
             string entityTypeName = typeof(TEntity).Name.ToUpper();
             if (!await _permissionService.Check($"{OperationType.READ}_{entityTypeName}"))
                 throw new UnauthorizedAccessException("You do not have permission to create this entity.");
 
-            var (data, totalCount) = await _repository.GetPaginatedAsync(predicate, pageIndex, pageSize, null, cancellationToken);
+            // Without a stable order the database may return pages that overlap or skip rows.
+            orderBy ??= q => q.OrderByDescending(x => x.CreatedAt).ThenByDescending(x => x.Id);
+            var (data, totalCount) = await _repository.GetPaginatedAsync(predicate, pageIndex, pageSize, orderBy, cancellationToken);
 
             return ResponseModel<List<TEntityViewModel>>.Ok(_mapper.Map<List<TEntityViewModel>>(data), pageIndex, pageSize, totalCount);
         }

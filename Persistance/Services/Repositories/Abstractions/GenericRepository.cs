@@ -67,6 +67,9 @@ namespace Persistance.Services.Repositories.Abstractions
         {
             _dbSet.Remove(entity);
             var deleted = await _context.SaveChangesAsync(cancellationToken) > 0;
+            // Soft-deleted rows stay tracked as Unchanged; deleting a related row later (a slide's image)
+            // would then make EF sever the link and null or reject the foreign key.
+            _context.Entry(entity).State = EntityState.Detached;
             if (UseCache)
                 await _unitOfWork.AfterCommitAsync(() => _redisService.RemoveAsync(CacheKey(entity.Id)));
             return deleted;

@@ -22,7 +22,7 @@ namespace Application.Interfaces.EntityServices.Abstractions
         Task<ResponseModel<bool>> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
         Task<ResponseModel<TEntityViewModel?>> GetAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
         Task<ResponseModel<TEntityViewModel?>> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
-        Task<ResponseModel<List<TEntityViewModel>>> GetAllAsync(Expression<Func<TEntity, bool>>? predicate = null, int pageIndex = 0, int pageSize = 20, CancellationToken cancellationToken = default);
+        Task<ResponseModel<List<TEntityViewModel>>> GetAllAsync(Expression<Func<TEntity, bool>>? predicate = null, int pageIndex = 0, int pageSize = 20, Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>>? orderBy = null, CancellationToken cancellationToken = default);
         Task<ResponseModel<bool>> ExistsAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
     }
 }

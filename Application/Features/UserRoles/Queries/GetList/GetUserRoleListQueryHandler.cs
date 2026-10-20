@@ -21,12 +21,9 @@ namespace Application.Features.UserRoles.Queries.GetList
         private readonly IUserRoleService _userRoleService = userRoleService;
         public async Task<ResponseModel<List<UserRoleViewModel>>> Handle(GetUserRoleListQuery request, CancellationToken cancellationToken)
         {
-            Expression<Func<UserRole, bool>>? predicate = null;
-            if (request.Filters != null && request.Filters.Any())
-            {
-                predicate = request.Filters.BuildPredicate<UserRole>();
-            }
-            return await _userRoleService.GetAllAsync(predicate, request.PageIndex, request.PageSize, cancellationToken);
+            var predicate = request.BuildPredicate<UserRole>();
+            var orderBy = request.BuildOrderBy<UserRole>();
+            return await _userRoleService.GetAllAsync(predicate, request.PageIndex, request.PageSize, orderBy, cancellationToken);
         }
     }
 }

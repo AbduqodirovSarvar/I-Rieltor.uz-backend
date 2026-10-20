@@ -20,12 +20,9 @@ namespace Application.Features.Slides.Queries.GetList
         private readonly ISlideService _slideService = slideService;
         public async Task<ResponseModel<List<SlideViewModel>>> Handle(GetSlideListQuery request, CancellationToken cancellationToken)
         {
-            Expression<Func<Slide, bool>>? predicate = null;
-            if (request.Filters != null && request.Filters.Any())
-            {
-                predicate = request.Filters.BuildPredicate<Slide>();
-            }
-            return await _slideService.GetAllAsync(predicate, request.PageIndex, request.PageSize, cancellationToken);
+            var predicate = request.BuildPredicate<Slide>();
+            var orderBy = request.BuildOrderBy<Slide>();
+            return await _slideService.GetAllAsync(predicate, request.PageIndex, request.PageSize, orderBy, cancellationToken);
         }
     }
 }

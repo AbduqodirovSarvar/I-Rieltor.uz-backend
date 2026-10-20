@@ -1,4 +1,5 @@
-﻿using Domain.Abstractions;
+﻿using Domain.Behaviours;
+using Domain.Abstractions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,11 +16,13 @@ namespace Domain.Entities
         /// <summary>
         /// Slayddagi asosiy sarlavha.
         /// </summary>
+        [Searchable]
         public string Title { get; set; } = string.Empty;
 
         /// <summary>
         /// Sarlavha ostidagi kichik sarlavha.
         /// </summary>
+        [Searchable]
         public string Subtitle { get; set; } = string.Empty;
 
         /// <summary>

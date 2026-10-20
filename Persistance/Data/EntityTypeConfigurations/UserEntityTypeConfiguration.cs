@@ -34,13 +34,17 @@ namespace Persistance.Data.EntityTypeConfigurations
             builder.Property(u => u.Email)
                    .HasMaxLength(150);
             builder.HasIndex(u => u.Email)
-                   .IsUnique();
+                   .IsUnique()
+                   .HasFilter(NotDeletedSql);
             builder.HasIndex(u => u.Login)
-                   .IsUnique();
+                   .IsUnique()
+                   .HasFilter(NotDeletedSql);
             builder.HasIndex(u => u.INNPINFL)
-                   .IsUnique();
+                   .IsUnique()
+                   .HasFilter(NotDeletedSql);
             builder.HasIndex(u => u.Phone)
-                   .IsUnique();
+                   .IsUnique()
+                   .HasFilter(NotDeletedSql);
         }
     }
 }

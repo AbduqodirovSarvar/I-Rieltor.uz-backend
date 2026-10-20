@@ -26,6 +26,8 @@ namespace WebApi.Handlers
                     => (HttpStatusCode.Unauthorized, exception.Message),
                 KeyNotFoundException
                     => (HttpStatusCode.NotFound, exception.Message),
+                ConflictException
+                    => (HttpStatusCode.Conflict, exception.Message),
                 DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } }
                     => (HttpStatusCode.Conflict, "A record with the same unique value already exists."),
                 DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.ForeignKeyViolation } }

@@ -22,8 +22,22 @@ namespace Application.Models.Requests.Abstractions
         /// </summary>
         [Range(1, MaxPageSize)]
         public int PageSize { get; init; } = 20;
+
+        /// <summary>
+        /// Case-insensitive text looked for in the entity's searchable fields (name, title, login...).
+        /// </summary>
+        [MaxLength(100)]
         public string? SearchText { get; init; } = null;
-        public string? SortBy { get; init; } = "CreatedAt";
+
+        /// <summary>
+        /// Property to sort by (e.g. "CreatedAt", "Title"). Empty: the list's default order.
+        /// </summary>
+        [MaxLength(64)]
+        public string? SortBy { get; init; } = null;
+
+        /// <summary>
+        /// "asc" or "desc"; used with <see cref="SortBy"/>.
+        /// </summary>
         public string SortDirection { get; init; } = "desc";
         public Dictionary<string, string> Filters { get; init; } = [];
     }

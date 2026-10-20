@@ -24,28 +24,33 @@ namespace Domain.Entities
         /// <summary>
         /// To'liq ism (F.I.Sh.). Yuridik shaxsda tashkilot nomi yoziladi.
         /// </summary>
+        [Searchable]
         public string FullName { get; set; } = string.Empty;
 
         /// <summary>
         /// Tizimga kirish uchun login. Noyob va ixtiyoriy: E-imzo orqali ro'yxatdan o'tganlarda bo'lmaydi.
         /// </summary>
+        [Searchable]
         public string? Login { get; set; } = null;
 
         /// <summary>
         /// Yuridik shaxsning rasmiy nomi. Faqat LEGAL turdagi mijozlar uchun.
         /// </summary>
+        [Searchable]
         public string? LegalName { get; set; } = null;
 
         /// <summary>
         /// Jismoniy shaxsning PINFL'i (14 raqam) yoki yuridik shaxsning INN'i (9 raqam).
         /// Noyob. E-imzo orqali kirishda foydalanuvchi shu maydon bo'yicha topiladi.
         /// </summary>
+        [Searchable]
         [INNPINFLValidation]
         public string? INNPINFL { get; set; } = null;
 
         /// <summary>
         /// Asosiy telefon raqami, xalqaro formatda (masalan +998901234567). Noyob.
         /// </summary>
+        [Searchable]
         [PhoneNumberValidation]
         public string? Phone { get; set; } = null;
 
@@ -64,6 +69,7 @@ namespace Domain.Entities
         /// Elektron pochta manzili. Noyob, login sifatida va xat yuborish uchun ishlatiladi.
         /// E-imzo orqali ro'yxatdan o'tganlarda bo'lmasligi mumkin (null).
         /// </summary>
+        [Searchable]
         [EmailAddress]
         public string? Email { get; set; }
 

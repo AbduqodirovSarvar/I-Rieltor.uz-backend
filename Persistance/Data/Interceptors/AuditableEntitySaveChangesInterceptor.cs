@@ -41,9 +41,22 @@ namespace Persistance.Data.Interceptors
             if (context == null) return;
             var currentUserService = GetCurrentUserService();
 
-            foreach (var entry in context.ChangeTracker.Entries<AudiTableEntity>())
+            // ToList: states are changed inside the loop.
+            foreach (var entry in context.ChangeTracker.Entries<AudiTableEntity>().ToList())
             {
-                if (entry.State == EntityState.Added)
+                if (entry.State == EntityState.Deleted)
+                {
+                    // Soft delete: the row stays and only IsDeleted and the update audit are written.
+                    // Nothing cascades in the database, so services delete dependents themselves.
+                    entry.State = EntityState.Unchanged;
+                    entry.Entity.IsDeleted = true;
+                    entry.Entity.UpdatedBy = currentUserService?.UserId;
+                    entry.Entity.UpdatedAt = DateTime.UtcNow;
+                    entry.Property(x => x.IsDeleted).IsModified = true;
+                    entry.Property(x => x.UpdatedBy).IsModified = true;
+                    entry.Property(x => x.UpdatedAt).IsModified = true;
+                }
+                else if (entry.State == EntityState.Added)
                 {
                     entry.Entity.CreatedAt = DateTime.UtcNow;
                     if (currentUserService != null)

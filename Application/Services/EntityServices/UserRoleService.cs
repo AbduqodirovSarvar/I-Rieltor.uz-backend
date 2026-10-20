@@ -1,4 +1,5 @@
-﻿using Application.Interfaces.Auths;
+﻿using Application.Exceptions;
+using Application.Interfaces.Auths;
 using Application.Interfaces.EntityServices;
 using Application.Interfaces.Repositories;
 using Application.Interfaces.Repositories.Abstractions;
@@ -22,12 +23,19 @@ namespace Application.Services.EntityServices
     public class UserRoleService(
                            IUserRoleRepository repository,
                            IPermissionService permissionService,
-                           IMapper mapper)
+                           IMapper mapper,
+                           IUserRepository userRepository,
+                           IUserRolePermissionRepository userRolePermissionRepository,
+                           IUnitOfWork unitOfWork)
         : GenericEntityService<UserRole,
                                CreateUserRoleDto,
                                UpdateUserRoleDto,
                                UserRoleViewModel>(repository, permissionService, mapper), IUserRoleService
     {
+        private readonly IUserRepository _userRepository = userRepository;
+        private readonly IUserRolePermissionRepository _userRolePermissionRepository = userRolePermissionRepository;
+        private readonly IUnitOfWork _unitOfWork = unitOfWork;
+
         public override async Task<ResponseModel<UserRoleViewModel>> UpdateAsync(UpdateUserRoleDto entityUpdateDto, CancellationToken cancellationToken = default)
         {
             string entityTypeName = typeof(UserRole).Name.ToUpper();
@@ -61,8 +69,18 @@ namespace Application.Services.EntityServices
             if (SystemRoles.IsSystemRole(entity.Name))
                 throw new InvalidOperationException($"System role '{entity.Name}' cannot be deleted.");
 
-            // A role that still has users is refused by the database (FK) and answered with 409.
-            return ResponseModel<bool>.Ok(await _repository.DeleteAsync(entity, cancellationToken));
+            // Soft delete keeps the row, so the FK no longer stops this; deleted users do not count.
+            if (await _userRepository.AnyAsync(u => u.UserRoleId == id, cancellationToken))
+                throw new ConflictException("The role is still assigned to users.");
+
+            // The role and its permissions go together; the database no longer cascades.
+            return await _unitOfWork.ExecuteAsync(async () =>
+            {
+                foreach (var permission in await _userRolePermissionRepository.GetAllAsync(p => p.UserRoleId == id, cancellationToken))
+                    await _userRolePermissionRepository.DeleteAsync(permission, cancellationToken);
+
+                return ResponseModel<bool>.Ok(await _repository.DeleteAsync(entity, cancellationToken));
+            }, cancellationToken);
         }
 
         /// <summary>

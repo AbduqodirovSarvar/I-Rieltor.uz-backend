@@ -25,7 +25,8 @@ namespace Persistance.Data.EntityTypeConfigurations
                 .IsRequired()
                 .HasMaxLength(100);
             builder.HasIndex(ur => ur.Name)
-                .IsUnique();
+                .IsUnique()
+                .HasFilter(NotDeletedSql);
         }
     }
 }

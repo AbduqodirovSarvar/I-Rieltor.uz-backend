@@ -17,6 +17,7 @@ namespace Domain.Entities
         /// <summary>
         /// Kompaniya nomi.
         /// </summary>
+        [Searchable]
         public string Name { get; set; } = string.Empty;
 
         /// <summary>

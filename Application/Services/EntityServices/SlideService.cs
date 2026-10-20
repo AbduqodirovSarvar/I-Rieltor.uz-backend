@@ -130,7 +130,7 @@ namespace Application.Services.EntityServices
             return ResponseModel<SlideViewModel?>.Ok(_mapper.Map<SlideViewModel>(entity));
         }
 
-        public override async Task<ResponseModel<List<SlideViewModel>>> GetAllAsync(Expression<Func<Slide, bool>>? predicate = null, int pageIndex = 0, int pageSize = 10, CancellationToken cancellationToken = default)
+        public override async Task<ResponseModel<List<SlideViewModel>>> GetAllAsync(Expression<Func<Slide, bool>>? predicate = null, int pageIndex = 0, int pageSize = 10, Func<IQueryable<Slide>, IOrderedQueryable<Slide>>? orderBy = null, CancellationToken cancellationToken = default)
         {
             string entityTypeName = typeof(Slide).Name.ToUpper();
             if (!await _permissionService.Check($"{OperationType.READ}_{entityTypeName}"))
@@ -138,9 +138,9 @@ namespace Application.Services.EntityServices
 
             var query = _repository.Query(predicate, cancellationToken);
             var totalCount = await query.CountAsync(cancellationToken);
-            var slides = await query.Include(x => x.UploadedFile)
-                                    .OrderBy(x => x.Order)
-                                    .ThenBy(x => x.CreatedAt)
+            // Default: carousel order.
+            orderBy ??= q => q.OrderBy(x => x.Order).ThenBy(x => x.CreatedAt).ThenBy(x => x.Id);
+            var slides = await orderBy(query.Include(x => x.UploadedFile))
                                     .Skip(pageIndex * pageSize)
                                     .Take(pageSize)
                                     .ToListAsync(cancellationToken);
