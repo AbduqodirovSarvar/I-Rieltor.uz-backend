@@ -26,6 +26,9 @@ namespace Persistance.Services.Auths
             if (httpContext == null)
                 return;
 
+            var address = httpContext.Connection.RemoteIpAddress;
+            IpAddress = (address?.IsIPv4MappedToIPv6 == true ? address.MapToIPv4() : address)?.ToString();
+
             var idClaim = httpContext?.User.Claims?.FirstOrDefault(x => x.Type == ClaimTypes.NameIdentifier);
             if (idClaim != null && Guid.TryParse(idClaim.Value, out Guid value))
             {
@@ -33,6 +36,7 @@ namespace Persistance.Services.Auths
             }
         }
         public Guid? UserId {get;}
+        public string? IpAddress { get; }
 
         public async Task<User?> GetCurrentUserAsync(CancellationToken cancellationToken = default)
         {

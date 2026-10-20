@@ -21,7 +21,9 @@ namespace Application.Services.EntityServices
                            IUserRepository repository,
                            IPermissionService permissionService,
                            IMapper mapper,
-                           IHashService hashService)
+                           IHashService hashService,
+                           IRefreshTokenRepository refreshTokenRepository,
+                           ICurrentUserService currentUserService)
         : GenericEntityService<User,
                                CreateUserDto,
                                UpdateUserDto,
@@ -29,6 +31,8 @@ namespace Application.Services.EntityServices
     {
         private readonly IUserRepository _userRepository = repository;
         private readonly IHashService _hashService = hashService;
+        private readonly IRefreshTokenRepository _refreshTokenRepository = refreshTokenRepository;
+        private readonly ICurrentUserService _currentUserService = currentUserService;
 
         public override async Task<ResponseModel<UserViewModel>> CreateAsync(CreateUserDto entityCreateDto, CancellationToken cancellationToken = default)
         {
@@ -63,18 +67,24 @@ namespace Application.Services.EntityServices
             _mapper.Map(entityUpdateDto, entity);
 
             // An empty password means "keep the current one".
-            if (!string.IsNullOrWhiteSpace(entityUpdateDto.Password))
-                entity.PasswordHash = _hashService.Hash(entityUpdateDto.Password);
+            var passwordChanged = !string.IsNullOrWhiteSpace(entityUpdateDto.Password);
+            if (passwordChanged)
+                entity.PasswordHash = _hashService.Hash(entityUpdateDto.Password!);
 
             var result = await _repository.UpdateAsync(entity, cancellationToken)
                                 ?? throw new InvalidOperationException("Failed to update entity.");
 
+            // Sessions opened with the old password end with it.
+            if (passwordChanged)
+                await _refreshTokenRepository.RevokeAllActiveAsync(entity.Id, DateTime.UtcNow, cancellationToken);
+
             return ResponseModel<UserViewModel>.Ok(_mapper.Map<UserViewModel>(result));
         }
 
+        /// <summary>
+        /// The signed-in user; every user may read their own profile, so no permission is required.
+        /// </summary>
         public Task<User?> GetCurrentUser(CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
+            => _currentUserService.GetCurrentUserAsync(cancellationToken);
     }
 }

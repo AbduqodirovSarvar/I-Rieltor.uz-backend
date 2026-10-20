@@ -15,9 +15,10 @@ namespace Application.Models.ViewModels.Users
     public record UserViewModel : BaseViewModel
     {
         public ClientType Type { get; set; }
-        public string FirstName { get; set; } = string.Empty;
-        public string LastName { get; set; } = string.Empty;
-        public string? MiddleName { get; set; } = null;
+        /// <summary>
+        /// "Familiya Ism Otasining ismi" as stored; the user entity keeps the name in one field.
+        /// </summary>
+        public string FullName { get; set; } = string.Empty;
         public string? Login { get; set; } = null;
         public string? LegalName { get; set; } = null;
         [INNPINFLValidation]
@@ -28,7 +29,7 @@ namespace Application.Models.ViewModels.Users
         public string? SecondaryPhone { get; set; } = null;
         public string? Address { get; set; } = null;
         [EmailAddress]
-        public string Email { get; set; } = string.Empty;
+        public string? Email { get; set; }
         public Guid? UserRoleId { get; set; }
         public UserRoleViewModel? UserRole { get; set; }
     }

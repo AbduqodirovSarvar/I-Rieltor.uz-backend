@@ -21,6 +21,7 @@ namespace Persistance.Data
         public virtual DbSet<UploadedFile> UploadedFiles { get; set; }
         public virtual DbSet<Slide> Slides { get; set; }
         public virtual DbSet<Company> Companies { get; set; }
+        public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

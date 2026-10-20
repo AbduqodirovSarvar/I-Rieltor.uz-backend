@@ -42,6 +42,7 @@ namespace Persistance.Extentions
             services.AddScoped<IUploadedFileRepository, UploadedFileRepository>();
             services.AddScoped<ISlideRepository, SlideRepository>();
             services.AddScoped<ICompanyRepository, CompanyRepository>();
+            services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
             services.AddSingleton<IHashService, HashService>();
             services.AddSingleton<ITokenService, TokenService>();
             services.AddScoped<IPermissionService, PermissionService>();
@@ -115,7 +116,9 @@ namespace Persistance.Extentions
                         ValidateIssuerSigningKey = true,
                         ValidAudience = configuration["JWTConfiguration:ValidAudience"],
                         ValidIssuer = configuration["JWTConfiguration:ValidIssuer"],
-                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretWord))
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretWord)),
+                        // The default 5 minutes would stretch a 30-minute access token by a sixth.
+                        ClockSkew = TimeSpan.FromSeconds(30)
                     };
                 });
 

@@ -25,11 +25,14 @@ namespace Application.Services.Auths
         IUserRepository userRepository,
         IMapper mapper,
         IEimzoService eimzoService,
-        IUserRoleRepository userRoleRepository
+        IUserRoleRepository userRoleRepository,
+        IRefreshTokenRepository refreshTokenRepository,
+        ICurrentUserService currentUserService
         ) : IAuthService
     {
         private const string DefaultRoleName = "DEFAULT_USER";
         private const string InvalidCredentialsMessage = "Invalid login or password.";
+        private const string InvalidRefreshTokenMessage = "Session has expired. Sign in again.";
 
         // Hash used when the login is unknown, so a failed sign-in takes the same time either way.
         private static string? _dummyPasswordHash;
@@ -41,6 +44,8 @@ namespace Application.Services.Auths
         private readonly IMapper _mapper = mapper;
         private readonly IEimzoService _eimzoService = eimzoService;
         private readonly IUserRoleRepository _userRoleRepository = userRoleRepository;
+        private readonly IRefreshTokenRepository _refreshTokenRepository = refreshTokenRepository;
+        private readonly ICurrentUserService _currentUserService = currentUserService;
         public async Task<TokenViewModel> LoginAsync(LoginDto loginDto, CancellationToken cancellationToken)
         {
             var user = await _userRepository
@@ -49,7 +54,7 @@ namespace Application.Services.Auths
                                     x.Email == loginDto.Login ||
                                     x.INNPINFL == loginDto.Login, cancellationToken)
                                 .Include(x => x.UserRole)
-                                    .ThenInclude(x => x.Permissions)
+                                    .ThenInclude(x => x!.Permissions)
                                 .FirstOrDefaultAsync(cancellationToken);
 
             if (user == null)
@@ -63,7 +68,7 @@ namespace Application.Services.Auths
                 throw new UnauthorizedAccessException(InvalidCredentialsMessage);
             }
 
-            return CreateToken(user);
+            return await IssueTokensAsync(user, cancellationToken);
         }
 
         public async Task<bool> RegisterAsync(RegisterDto registerDto, CancellationToken cancellationToken)
@@ -88,24 +93,66 @@ namespace Application.Services.Auths
             var user = await _userRepository
                                     .Query(x => x.INNPINFL == identifier, cancellationToken)
                                     .Include(x => x.UserRole)
-                                        .ThenInclude(x => x.Permissions)
+                                        .ThenInclude(x => x!.Permissions)
                                     .FirstOrDefaultAsync(cancellationToken)
                                     ?? throw new UnauthorizedAccessException("User not registered.");
 
-            return CreateToken(user);
+            return await IssueTokensAsync(user, cancellationToken);
         }
 
         public Task<EimzoChallengeResult> GetEimzoChallengeAsync(CancellationToken cancellationToken)
             => _eimzoService.GetChallengeAsync(cancellationToken);
 
-        public Task<bool> LogOutAsync(string token, CancellationToken cancellationToken)
+        /// <summary>
+        /// Ends the session the refresh token belongs to. Always succeeds, so the answer
+        /// does not tell a caller whether a token exists. The access token stays valid until it expires.
+        /// </summary>
+        public async Task<bool> LogOutAsync(string token, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            var stored = await _refreshTokenRepository.GetByHashAsync(_tokenService.HashRefreshToken(token), cancellationToken);
+            if (stored != null)
+                await _refreshTokenRepository.TryRevokeAsync(stored.Id, null, DateTime.UtcNow, cancellationToken);
+
+            return true;
         }
 
-        public Task<TokenViewModel> RefreshTokenAsync(string refreshToken, CancellationToken cancellationToken)
+        /// <summary>
+        /// Exchanges a refresh token for a new access token and a new refresh token (rotation).
+        /// Permissions are re-read, so role changes reach the user at the next refresh.
+        /// </summary>
+        public async Task<TokenViewModel> RefreshTokenAsync(string refreshToken, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            var now = DateTime.UtcNow;
+            var stored = await _refreshTokenRepository.GetByHashAsync(_tokenService.HashRefreshToken(refreshToken), cancellationToken)
+                            ?? throw new UnauthorizedAccessException(InvalidRefreshTokenMessage);
+
+            if (stored.RevokedAt != null)
+            {
+                // A token that was already exchanged is being used again: someone holds a copy.
+                // End every session of the user so the copy, and anything issued from it, stops working.
+                await _refreshTokenRepository.RevokeAllActiveAsync(stored.UserId, now, cancellationToken);
+                throw new UnauthorizedAccessException(InvalidRefreshTokenMessage);
+            }
+
+            if (stored.ExpiresAt <= now)
+                throw new UnauthorizedAccessException(InvalidRefreshTokenMessage);
+
+            var user = await _userRepository
+                                .Query(x => x.Id == stored.UserId, cancellationToken)
+                                .Include(x => x.UserRole)
+                                    .ThenInclude(x => x!.Permissions)
+                                .FirstOrDefaultAsync(cancellationToken)
+                                ?? throw new UnauthorizedAccessException(InvalidRefreshTokenMessage);
+
+            var newTokenId = Guid.CreateVersion7();
+            if (!await _refreshTokenRepository.TryRevokeAsync(stored.Id, newTokenId, now, cancellationToken))
+            {
+                // Another request exchanged the same token a moment earlier; treat it like reuse.
+                await _refreshTokenRepository.RevokeAllActiveAsync(stored.UserId, now, cancellationToken);
+                throw new UnauthorizedAccessException(InvalidRefreshTokenMessage);
+            }
+
+            return await IssueTokensAsync(user, cancellationToken, newTokenId);
         }
 
         public async Task<bool> RegisterViaEimzoAsync(RegisterViaEimzoDto registerDto, CancellationToken cancellationToken)
@@ -168,7 +215,11 @@ namespace Application.Services.Auths
             return identifier;
         }
 
-        private TokenViewModel CreateToken(User user)
+        /// <summary>
+        /// Starts a session: a short-lived access token plus a refresh token whose hash is stored.
+        /// <paramref name="user"/> must be loaded with its role and permissions.
+        /// </summary>
+        private async Task<TokenViewModel> IssueTokensAsync(User user, CancellationToken cancellationToken, Guid? refreshTokenId = null)
         {
             var claims = new List<Claim>
             {
@@ -180,11 +231,25 @@ namespace Application.Services.Auths
             {
                 claims.Add(new Claim("permission", permission.Permission.ToString()));
             });
-            var accessToken = _tokenService.GenerateToken([.. claims]);
+            var (accessToken, accessTokenExpiresAt) = _tokenService.GenerateAccessToken([.. claims]);
+
+            var refreshToken = _tokenService.GenerateRefreshToken();
+            var refreshTokenExpiresAt = DateTime.UtcNow.Add(_tokenService.RefreshTokenLifetime);
+            await _refreshTokenRepository.CreateAsync(new RefreshToken
+            {
+                Id = refreshTokenId ?? Guid.CreateVersion7(),
+                UserId = user.Id,
+                TokenHash = _tokenService.HashRefreshToken(refreshToken),
+                ExpiresAt = refreshTokenExpiresAt,
+                CreatedByIp = _currentUserService.IpAddress
+            }, cancellationToken);
 
             return new TokenViewModel
             {
                 AccessToken = accessToken,
+                AccessTokenExpiration = accessTokenExpiresAt,
+                RefreshToken = refreshToken,
+                RefreshTokenExpiration = refreshTokenExpiresAt,
                 TokenType = "Bearer",
                 UserId = user.Id.ToString()
             };
@@ -218,7 +283,11 @@ namespace Application.Services.Auths
                             ?? throw new KeyNotFoundException("User not registered.");
 
             user.PasswordHash = _hashService.Hash(resetPasswordDto.NewPassword);
-            return await _userRepository.UpdateAsync(user, cancellationToken) != null;
+            var updated = await _userRepository.UpdateAsync(user, cancellationToken) != null;
+
+            // Whoever knew the old password must not stay signed in.
+            await _refreshTokenRepository.RevokeAllActiveAsync(user.Id, DateTime.UtcNow, cancellationToken);
+            return updated;
         }
 
         public Task<bool> SendEmailAsync(string email, CancellationToken cancellationToken)

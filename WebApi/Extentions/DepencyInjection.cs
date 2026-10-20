@@ -1,7 +1,7 @@
 ﻿using Application.Extentions;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Configuration;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using Persistance.Extentions;
 using System.Threading.RateLimiting;
 using WebApi.Handlers;
@@ -12,7 +12,7 @@ namespace WebApi.Extentions
     {
         public const string CorsPolicy = "Frontend";
         public const string AuthRateLimitPolicy = "auth";
-        public const string EimzoChallengeRateLimitPolicy = "eimzo-challenge";
+        public const string SessionRateLimitPolicy = "session";
 
         public static void AdApiDepencies(this WebApplicationBuilder builder)
         {
@@ -65,9 +65,10 @@ namespace WebApi.Extentions
                             Window = TimeSpan.FromMinutes(1),
                             QueueLimit = 0
                         }));
-                // Requesting a challenge grants nothing by itself, but every E-IMZO sign-in needs one;
-                // a separate, looser limit keeps it from eating the sign-in budget of a shared office IP.
-                options.AddPolicy(EimzoChallengeRateLimitPolicy, httpContext =>
+                // E-IMZO challenges, token refresh and logout cannot be used to guess credentials
+                // (each needs a signature or a 512-bit token), but every active user calls them;
+                // a separate, looser limit keeps them from eating the sign-in budget of a shared office IP.
+                options.AddPolicy(SessionRateLimitPolicy, httpContext =>
                     RateLimitPartition.GetFixedWindowLimiter(
                         httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                         _ => new FixedWindowRateLimiterOptions
@@ -101,19 +102,10 @@ namespace WebApi.Extentions
                     Type = SecuritySchemeType.Http
                 });
 
-                options.AddSecurityRequirement(new OpenApiSecurityRequirement()
+                // Microsoft.OpenApi 2.x: a requirement points at the scheme through a document-bound reference.
+                options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
                 {
-                    {
-                        new OpenApiSecurityScheme()
-                        {
-                            Reference = new OpenApiReference
-                            {
-                                Id = "Bearer",
-                                Type = ReferenceType.SecurityScheme
-                            }
-                        },
-                        new List<string>()
-                    }
+                    [new OpenApiSecuritySchemeReference("Bearer", document)] = []
                 });
             });
 

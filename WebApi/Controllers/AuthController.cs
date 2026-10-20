@@ -1,5 +1,8 @@
 ﻿using Application.Features.Auths.Commands.Login;
 using Application.Features.Auths.Commands.LoginViaEimzo;
+using Application.Features.Auths.Commands.Logout;
+using Application.Features.Auths.Commands.RefreshToken;
+using Application.Features.Auths.Queries.CurrentUser;
 using Application.Features.Auths.Commands.Register;
 using Application.Features.Auths.Commands.RegisterViaEimzo;
 using Application.Features.Auths.Commands.Reset;
@@ -34,7 +37,7 @@ namespace WebApi.Controllers
         /// One-time challenge the user signs with E-IMZO before sign-in, sign-up or password reset via E-IMZO.
         /// </summary>
         [HttpGet("eimzo/challenge")]
-        [EnableRateLimiting(DepencyInjection.EimzoChallengeRateLimitPolicy)]
+        [EnableRateLimiting(DepencyInjection.SessionRateLimitPolicy)]
         public async Task<IActionResult> GetEimzoChallenge()
         {
             // A challenge is single-use; proxies and browsers must not cache it.
@@ -94,13 +97,37 @@ namespace WebApi.Controllers
             return Ok(result);
         }
 
-        [HttpGet("refresh-token")]
-        public async Task<IActionResult> GetAccessToken([FromBody] string refleshToken)
+        /// <summary>
+        /// Exchanges a refresh token for a new access token and a new refresh token; the old one stops working.
+        /// </summary>
+        [HttpPost("refresh-token")]
+        [EnableRateLimiting(DepencyInjection.SessionRateLimitPolicy)]
+        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenCommand command)
         {
-            if (refleshToken == null)
-                return BadRequest("Reflesh token cannot be null");
+            var result = await _mediator.Send(command);
+            return Ok(result);
+        }
 
-            var result = await _mediator.Send(refleshToken);
+        /// <summary>
+        /// Ends the session of the given refresh token. The access token stays valid until it expires.
+        /// </summary>
+        [HttpPost("logout")]
+        [EnableRateLimiting(DepencyInjection.SessionRateLimitPolicy)]
+        public async Task<IActionResult> Logout([FromBody] LogoutCommand command)
+        {
+            var result = await _mediator.Send(command);
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Profile of the signed-in user.
+        /// </summary>
+        [HttpGet("me")]
+        [Authorize]
+        [DisableRateLimiting]
+        public async Task<IActionResult> Me()
+        {
+            var result = await _mediator.Send(new GetCurrentUserQuery());
             return Ok(result);
         }
     }
