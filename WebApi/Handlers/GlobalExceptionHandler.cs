@@ -1,3 +1,4 @@
+using Application.Exceptions;
 using Application.Models.Results;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
@@ -31,6 +32,8 @@ namespace WebApi.Handlers
                     => (HttpStatusCode.BadRequest, exception.Message),
                 NotImplementedException
                     => (HttpStatusCode.NotImplemented, "This operation is not implemented yet."),
+                ServiceUnavailableException
+                    => (HttpStatusCode.ServiceUnavailable, exception.Message),
                 _ => (HttpStatusCode.InternalServerError, "An unexpected error occurred.")
             };
 

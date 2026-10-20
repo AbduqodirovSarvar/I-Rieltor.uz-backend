@@ -1,5 +1,6 @@
 ﻿using Application.Models.Dtos.Auths;
 using Application.Models.Dtos.Users;
+using Application.Models.Results;
 using Application.Models.ViewModels.Auths;
 using System;
 using System.Collections.Generic;
@@ -13,6 +14,7 @@ namespace Application.Interfaces.Auths
     {
         Task<TokenViewModel> LoginAsync(LoginDto loginDto, CancellationToken cancellationToken);
         Task<TokenViewModel> LoginViaEimzoAsync(LoginViaEimzoDto loginDto, CancellationToken cancellationToken);
+        Task<EimzoChallengeResult> GetEimzoChallengeAsync(CancellationToken cancellationToken);
         Task<bool> RegisterAsync(RegisterDto registerDto, CancellationToken cancellationToken);
         Task<bool> RegisterViaEimzoAsync(RegisterViaEimzoDto registerDto, CancellationToken cancellationToken);
         Task<bool> ResetAsync(ResetPasswordDto resetPasswordDto, CancellationToken cancellationToken);

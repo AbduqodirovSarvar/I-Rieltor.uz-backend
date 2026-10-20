@@ -62,9 +62,10 @@ namespace Domain.Entities
 
         /// <summary>
         /// Elektron pochta manzili. Noyob, login sifatida va xat yuborish uchun ishlatiladi.
+        /// E-imzo orqali ro'yxatdan o'tganlarda bo'lmasligi mumkin (null).
         /// </summary>
         [EmailAddress]
-        public string Email { get; set; } = string.Empty;
+        public string? Email { get; set; }
 
         /// <summary>
         /// Parolning hash qiymati (PBKDF2). Parolning o'zi hech qachon saqlanmaydi.

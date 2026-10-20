@@ -4,6 +4,7 @@ using Application.Features.Auths.Commands.Register;
 using Application.Features.Auths.Commands.RegisterViaEimzo;
 using Application.Features.Auths.Commands.Reset;
 using Application.Features.Auths.Commands.ResetViaEimzo;
+using Application.Features.Auths.Queries.EimzoChallenge;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -26,6 +27,20 @@ namespace WebApi.Controllers
                 return BadRequest("Request cannot be null");
 
             var result = await _mediator.Send(command);
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// One-time challenge the user signs with E-IMZO before sign-in, sign-up or password reset via E-IMZO.
+        /// </summary>
+        [HttpGet("eimzo/challenge")]
+        [EnableRateLimiting(DepencyInjection.EimzoChallengeRateLimitPolicy)]
+        public async Task<IActionResult> GetEimzoChallenge()
+        {
+            // A challenge is single-use; proxies and browsers must not cache it.
+            Response.Headers.CacheControl = "no-store";
+
+            var result = await _mediator.Send(new GetEimzoChallengeQuery());
             return Ok(result);
         }
 

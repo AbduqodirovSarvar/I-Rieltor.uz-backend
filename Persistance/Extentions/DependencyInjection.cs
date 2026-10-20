@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Persistance.Data;
 using Persistance.Data.Interceptors;
@@ -44,9 +45,12 @@ namespace Persistance.Extentions
             services.AddSingleton<IHashService, HashService>();
             services.AddSingleton<ITokenService, TokenService>();
             services.AddScoped<IPermissionService, PermissionService>();
-            services.AddHttpClient<IEimzoService, EimzoService>(client =>
+            services.Configure<EimzoConfiguration>(configuration.GetSection(EimzoConfiguration.SectionName));
+            services.AddHttpClient<IEimzoService, EimzoService>((serviceProvider, client) =>
             {
-                client.BaseAddress = new Uri(configuration["Eimzo:BaseUrl"]!);
+                var eimzo = serviceProvider.GetRequiredService<IOptions<EimzoConfiguration>>().Value;
+                client.BaseAddress = new Uri(eimzo.BaseUrl);
+                client.Timeout = TimeSpan.FromSeconds(eimzo.TimeoutSeconds);
             });
 
             services.AddScoped<IFileService>(provider =>

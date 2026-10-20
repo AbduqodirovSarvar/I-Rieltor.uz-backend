@@ -30,9 +30,9 @@ namespace Persistance.Data.EntityTypeConfigurations
                    .HasMaxLength(15);
             builder.Property(u => u.SecondaryPhone)
                    .HasMaxLength(15);
+            // Optional: users registered via E-IMZO have no email. PostgreSQL unique indexes allow many NULLs.
             builder.Property(u => u.Email)
-                   .HasMaxLength(150)
-                   .IsRequired();
+                   .HasMaxLength(150);
             builder.HasIndex(u => u.Email)
                    .IsUnique();
             builder.HasIndex(u => u.Login)

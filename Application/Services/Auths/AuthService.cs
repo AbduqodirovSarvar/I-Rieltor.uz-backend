@@ -3,6 +3,7 @@ using Application.Interfaces.EntityServices;
 using Application.Interfaces.Notifications;
 using Application.Interfaces.Repositories;
 using Application.Models.Dtos.Auths;
+using Application.Models.Results;
 using Application.Models.ViewModels.Auths;
 using AutoMapper;
 using Domain.Entities;
@@ -62,24 +63,7 @@ namespace Application.Services.Auths
                 throw new UnauthorizedAccessException(InvalidCredentialsMessage);
             }
 
-            var claims = new List<Claim>
-            {
-                new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new(ClaimTypes.Role, user.UserRole?.Name?.ToString() ?? "NONE")
-            };
-
-            user.UserRole?.Permissions?.ToList().ForEach(permission =>
-            {
-                claims.Add(new Claim("permission", permission.Permission.ToString()));
-            });
-            var accessToken = _tokenService.GenerateToken([.. claims]);
-
-            return new TokenViewModel
-            {
-                AccessToken = accessToken,
-                TokenType = "Bearer",
-                UserId = user.Id.ToString()
-            };
+            return CreateToken(user);
         }
 
         public async Task<bool> RegisterAsync(RegisterDto registerDto, CancellationToken cancellationToken)
@@ -98,21 +82,94 @@ namespace Application.Services.Auths
 
         public async Task<TokenViewModel> LoginViaEimzoAsync(LoginViaEimzoDto loginDto, CancellationToken cancellationToken)
         {
-            var verifyResult = await _eimzoService.VerifyAsync(loginDto.SignedData, cancellationToken);
-
-            if (!verifyResult.IsValid)
-                throw new UnauthorizedAccessException("Invalid E-Imzo signature.");
+            var certificate = await AuthenticateWithEimzoAsync(loginDto.SignedData, cancellationToken);
+            var identifier = GetEimzoAccountIdentifier(certificate);
 
             var user = await _userRepository
-                                    .Query(x =>
-                                        x.INNPINFL == verifyResult.Pinfl ||
-                                        x.INNPINFL == verifyResult.Inn,
-                                        cancellationToken)
+                                    .Query(x => x.INNPINFL == identifier, cancellationToken)
                                     .Include(x => x.UserRole)
                                         .ThenInclude(x => x.Permissions)
                                     .FirstOrDefaultAsync(cancellationToken)
                                     ?? throw new UnauthorizedAccessException("User not registered.");
 
+            return CreateToken(user);
+        }
+
+        public Task<EimzoChallengeResult> GetEimzoChallengeAsync(CancellationToken cancellationToken)
+            => _eimzoService.GetChallengeAsync(cancellationToken);
+
+        public Task<bool> LogOutAsync(string token, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<TokenViewModel> RefreshTokenAsync(string refreshToken, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task<bool> RegisterViaEimzoAsync(RegisterViaEimzoDto registerDto, CancellationToken cancellationToken)
+        {
+            var certificate = await AuthenticateWithEimzoAsync(registerDto.SignedData, cancellationToken);
+            var identifier = GetEimzoAccountIdentifier(certificate);
+
+            if (await _userRepository.ExistsWithAnyAsync(null, null, identifier, null, cancellationToken: cancellationToken))
+                throw new InvalidOperationException("User already registered.");
+
+            var personName = string.Join(' ', new[] { certificate.LastName, certificate.FirstName }.Where(x => !string.IsNullOrWhiteSpace(x)));
+            if (string.IsNullOrWhiteSpace(personName))
+                personName = certificate.CommonName ?? string.Empty;
+
+            var user = new User
+            {
+                INNPINFL = identifier,
+                // E-IMZO users have no email until they add one in their profile.
+                Email = null,
+                UserRoleId = await GetDefaultRoleIdAsync(cancellationToken)
+            };
+
+            if (certificate.IsLegalEntity)
+            {
+                user.Type = ClientType.LEGAL;
+                user.LegalName = certificate.Organization;
+                user.FullName = certificate.Organization ?? personName;
+            }
+            else
+            {
+                user.Type = ClientType.INDIVIDUAL;
+                user.FullName = personName;
+            }
+
+            return await _userRepository.CreateAsync(user, cancellationToken) != null;
+        }
+
+        /// <summary>
+        /// Checks a signed challenge with E-IMZO-SERVER and returns the signer's certificate.
+        /// </summary>
+        private async Task<EimzoCertificateInfo> AuthenticateWithEimzoAsync(string signedChallenge, CancellationToken cancellationToken)
+        {
+            var result = await _eimzoService.AuthenticateAsync(signedChallenge, cancellationToken);
+            if (!result.IsSuccess || result.Certificate == null)
+                throw new UnauthorizedAccessException($"E-IMZO: {result.Message}");
+
+            return result.Certificate;
+        }
+
+        /// <summary>
+        /// A legal-entity key acts for the organisation, so it maps to the organisation's account (INN);
+        /// a personal key maps to the person's account (PINFL).
+        /// </summary>
+        private static string GetEimzoAccountIdentifier(EimzoCertificateInfo certificate)
+        {
+            var identifier = certificate.IsLegalEntity ? certificate.LegalInn : certificate.Pinfl;
+            if (string.IsNullOrWhiteSpace(identifier))
+                throw new UnauthorizedAccessException("E-IMZO: the certificate contains neither PINFL nor organisation INN.");
+
+            return identifier;
+        }
+
+        private TokenViewModel CreateToken(User user)
+        {
             var claims = new List<Claim>
             {
                 new(ClaimTypes.NameIdentifier, user.Id.ToString()),
@@ -133,52 +190,6 @@ namespace Application.Services.Auths
             };
         }
 
-        public Task<bool> LogOutAsync(string token, CancellationToken cancellationToken)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<TokenViewModel> RefreshTokenAsync(string refreshToken, CancellationToken cancellationToken)
-        {
-            throw new NotImplementedException();
-        }
-
-        public async Task<bool> RegisterViaEimzoAsync(RegisterViaEimzoDto registerDto, CancellationToken cancellationToken)
-        {
-            var verifyResult = await _eimzoService.VerifyAsync(
-                registerDto.SignedData,
-                cancellationToken);
-
-            if (!verifyResult.IsValid)
-                throw new UnauthorizedAccessException("Invalid E-Imzo signature.");
-
-            var userExists = await _userRepository.AnyAsync(
-                x => x.INNPINFL == verifyResult.Pinfl ||
-                     x.INNPINFL == verifyResult.Inn,
-                cancellationToken);
-
-            if (userExists)
-                throw new InvalidOperationException("User already registered.");
-
-            var user = new User();
-            if(!string.IsNullOrEmpty(verifyResult.Pinfl))
-{
-                user.Type = ClientType.INDIVIDUAL;
-                user.INNPINFL = verifyResult.Pinfl;
-                user.FullName = $"{verifyResult.LastName} {verifyResult.FirstName}";
-            }
-            else {
-                user.Type = ClientType.LEGAL;
-                user.INNPINFL = verifyResult.Inn;
-                user.LegalName = verifyResult.LegalName;
-                user.FullName = verifyResult.LegalName!;
-            }
-
-            user.UserRoleId = await GetDefaultRoleIdAsync(cancellationToken);
-
-            return await _userRepository.CreateAsync(user, cancellationToken) != null;
-        }
-
         /// <summary>
         /// Read straight from the repository: registration is anonymous, so the
         /// permission-checked role service would always refuse.
@@ -194,9 +205,20 @@ namespace Application.Services.Auths
             throw new NotImplementedException();
         }
 
-        public Task<bool> ResetViaEimzoAsync(ResetPasswordByEImzoDto resetPasswordDto, CancellationToken cancellationToken)
+        /// <summary>
+        /// A signed challenge proves who the user is, so it can set a new password without email confirmation.
+        /// Also lets users who registered through E-IMZO add a password.
+        /// </summary>
+        public async Task<bool> ResetViaEimzoAsync(ResetPasswordByEImzoDto resetPasswordDto, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            var certificate = await AuthenticateWithEimzoAsync(resetPasswordDto.SignedData, cancellationToken);
+            var identifier = GetEimzoAccountIdentifier(certificate);
+
+            var user = await _userRepository.GetAsync(x => x.INNPINFL == identifier, cancellationToken)
+                            ?? throw new KeyNotFoundException("User not registered.");
+
+            user.PasswordHash = _hashService.Hash(resetPasswordDto.NewPassword);
+            return await _userRepository.UpdateAsync(user, cancellationToken) != null;
         }
 
         public Task<bool> SendEmailAsync(string email, CancellationToken cancellationToken)

@@ -12,6 +12,7 @@ namespace WebApi.Extentions
     {
         public const string CorsPolicy = "Frontend";
         public const string AuthRateLimitPolicy = "auth";
+        public const string EimzoChallengeRateLimitPolicy = "eimzo-challenge";
 
         public static void AdApiDepencies(this WebApplicationBuilder builder)
         {
@@ -61,6 +62,17 @@ namespace WebApi.Extentions
                         _ => new FixedWindowRateLimiterOptions
                         {
                             PermitLimit = 10,
+                            Window = TimeSpan.FromMinutes(1),
+                            QueueLimit = 0
+                        }));
+                // Requesting a challenge grants nothing by itself, but every E-IMZO sign-in needs one;
+                // a separate, looser limit keeps it from eating the sign-in budget of a shared office IP.
+                options.AddPolicy(EimzoChallengeRateLimitPolicy, httpContext =>
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                        _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = 30,
                             Window = TimeSpan.FromMinutes(1),
                             QueueLimit = 0
                         }));

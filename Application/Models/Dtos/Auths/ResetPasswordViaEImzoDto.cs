@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Domain.Behaviours;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -10,27 +11,24 @@ namespace Application.Models.Dtos.Auths
     public record ResetPasswordByEImzoDto
     {
         /// <summary>
-        /// Elektron imzo orqali yuborilgan imzolangan ma'lumot (base64 formatda)
+        /// E-IMZO bilan imzolangan challenge (PKCS#7, Base64). Challenge `GET api/auth/eimzo/challenge` orqali olinadi.
+        /// Foydalanuvchi va uning sertifikati shu imzodan aniqlanadi, alohida public key kerak emas.
         /// </summary>
         [Required]
         public string SignedData { get; init; } = null!;
 
         /// <summary>
-        /// Foydalanuvchining E-IMZO sertifikatidan olingan ochiq kalit (public key)
-        /// </summary>
-        [Required]
-        public string PublicKey { get; init; } = null!;
-
-        /// <summary>
         /// Yangi parol
         /// </summary>
         [Required]
+        [PasswordValidation]
         public string NewPassword { get; init; } = null!;
 
         /// <summary>
         /// Yangi parolni tasdiqlash
         /// </summary>
         [Required]
+        [Compare(nameof(NewPassword), ErrorMessage = "Passwords do not match.")]
         public string ConfirmPassword { get; init; } = null!;
     }
 }
