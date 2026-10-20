@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Persistance.Data;
 using Persistance.Data.Seeds;
+using Persistance.Services.Files;
 
 namespace WebApi.Extentions
 {
@@ -38,13 +39,17 @@ namespace WebApi.Extentions
         }
 
         /// <summary>
-        /// Serves files from wwwroot/uploads at /uploads as static files, without hitting controllers or the database.
-        /// Only this folder is exposed (wwwroot/deleted stays private), and only whitelisted file types are served.
+        /// Serves files from &lt;FileStorage:RootPath&gt;/uploads at /uploads as static files, without hitting controllers or the database.
+        /// Only this folder is exposed (deleted/ next to it stays private), and only whitelisted file types are served.
         /// </summary>
         private static void UseUploadedFiles(this WebApplication app)
         {
-            var uploadsPath = Path.Combine(app.Environment.WebRootPath, "uploads");
+            var rootPath = FileStorageLocation.ResolveRootPath(app.Configuration, app.Environment.ContentRootPath);
+            var uploadsPath = FileStorageLocation.UploadsPath(rootPath);
+            // Fails at startup, not on the first upload, when the folder is not writable (e.g. a volume owned by root).
             Directory.CreateDirectory(uploadsPath);
+            Directory.CreateDirectory(Path.Combine(rootPath, "deleted"));
+            app.Logger.LogInformation("Uploaded files are stored in {RootPath}", rootPath);
 
             var contentTypes = new FileExtensionContentTypeProvider(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {

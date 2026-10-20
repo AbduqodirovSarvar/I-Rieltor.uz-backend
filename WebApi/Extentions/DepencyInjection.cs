@@ -27,7 +27,6 @@ namespace WebApi.Extentions
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddControllers();
             builder.Services.AddOpenApi();
-            builder.AddUploadFolders();
         }
 
         /// <summary>
@@ -110,30 +109,6 @@ namespace WebApi.Extentions
             });
 
             return services;
-        }
-
-        private static void AddUploadFolders(this WebApplicationBuilder builder)
-        {
-            var webRootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-
-            if (!Directory.Exists(webRootPath))
-            {
-                Directory.CreateDirectory(webRootPath);
-            }
-
-            var uploadedPath = Path.Combine(webRootPath, "uploads");
-            if (!Directory.Exists(uploadedPath))
-            {
-                Directory.CreateDirectory(uploadedPath);
-            }
-
-            var deletedPath = Path.Combine(webRootPath, "deleted");
-            if (!Directory.Exists(deletedPath))
-            {
-                Directory.CreateDirectory(deletedPath);
-            }
-
-            builder.Environment.WebRootPath = webRootPath;
         }
     }
 }

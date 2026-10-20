@@ -17,10 +17,11 @@ namespace Application.Interfaces.Auths
         Task<EimzoChallengeResult> GetEimzoChallengeAsync(CancellationToken cancellationToken);
         Task<bool> RegisterAsync(RegisterDto registerDto, CancellationToken cancellationToken);
         Task<bool> RegisterViaEimzoAsync(RegisterViaEimzoDto registerDto, CancellationToken cancellationToken);
-        Task<bool> ResetAsync(ResetPasswordDto resetPasswordDto, CancellationToken cancellationToken);
         Task<bool> ResetViaEimzoAsync(ResetPasswordByEImzoDto resetPasswordDto, CancellationToken cancellationToken);
         Task<TokenViewModel> RefreshTokenAsync(string refreshToken, CancellationToken cancellationToken);
         Task<bool> LogOutAsync(string token, CancellationToken cancellationToken);
-        Task<bool> SendEmailAsync(string email, CancellationToken cancellationToken);
+        Task<bool> ChangeMyEmailAsync(string email, CancellationToken cancellationToken);
+        Task<bool> ResendEmailConfirmationAsync(CancellationToken cancellationToken);
+        Task<bool> ConfirmEmailAsync(string token, CancellationToken cancellationToken);
     }
 }

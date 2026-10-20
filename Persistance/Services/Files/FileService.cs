@@ -12,32 +12,32 @@ namespace Persistance.Services.Files
 {
     public class FileService : IFileService
     {
-        private readonly string _webRootPath;
+        private readonly string _rootPath;
         private readonly string _publicBaseUrl;
         private readonly long _maxFileSizeBytes;
 
-        /// <param name="webRootPath">wwwroot papkasining to'liq yo'li.</param>
+        /// <param name="rootPath">Fayllar saqlanadigan papka (<see cref="FileStorageLocation"/>); ichida uploads/ va deleted/.</param>
         /// <param name="publicBaseUrl">
         /// Fayllar statik beriladigan server manzili (masalan "https://api.i-rieltor.uz").
         /// Bo'sh bo'lsa Url nisbiy yo'l ko'rinishida saqlanadi.
         /// </param>
         /// <param name="maxFileSizeMb">Bitta faylning ruxsat etilgan eng katta hajmi, MB.</param>
-        public FileService(string webRootPath, string? publicBaseUrl = null, int maxFileSizeMb = 20)
+        public FileService(string rootPath, string? publicBaseUrl = null, int maxFileSizeMb = 20)
         {
-            _webRootPath = webRootPath ?? throw new ArgumentNullException(nameof(webRootPath));
+            _rootPath = rootPath ?? throw new ArgumentNullException(nameof(rootPath));
             _publicBaseUrl = publicBaseUrl?.TrimEnd('/') ?? string.Empty;
             _maxFileSizeBytes = maxFileSizeMb * 1024L * 1024L;
 
-            if (!Directory.Exists(_webRootPath))
-                Directory.CreateDirectory(_webRootPath);
+            if (!Directory.Exists(_rootPath))
+                Directory.CreateDirectory(_rootPath);
 
-            var uploadsPath = Path.Combine(_webRootPath, "uploads");
+            var uploadsPath = Path.Combine(_rootPath, "uploads");
             if (!Directory.Exists(uploadsPath))
                 Directory.CreateDirectory(uploadsPath);
         }
         private string GetUploadPath(string category = "default")
         {
-            var path = Path.Combine(_webRootPath, "uploads", category);
+            var path = Path.Combine(_rootPath, "uploads", category);
             if (!Directory.Exists(path))
                 Directory.CreateDirectory(path);
             return path;
@@ -92,7 +92,7 @@ namespace Persistance.Services.Files
             if (!File.Exists(sourcePath))
                 return;
 
-            var deletedPath = Path.Combine(_webRootPath, "deleted", category);
+            var deletedPath = Path.Combine(_rootPath, "deleted", category);
             if (!Directory.Exists(deletedPath))
                 Directory.CreateDirectory(deletedPath);
 

@@ -30,6 +30,10 @@ namespace Application.Models.ViewModels.Users
         public string? Address { get; set; } = null;
         [EmailAddress]
         public string? Email { get; set; }
+        /// <summary>
+        /// When the email was confirmed through the emailed link; null while unconfirmed.
+        /// </summary>
+        public DateTime? EmailConfirmedAt { get; set; }
         public Guid? UserRoleId { get; set; }
         public UserRoleViewModel? UserRole { get; set; }
     }

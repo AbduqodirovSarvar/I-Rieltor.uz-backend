@@ -77,7 +77,12 @@ namespace Application.Services.EntityServices
             if (await _userRepository.ExistsWithAnyAsync(entityUpdateDto.Login, entityUpdateDto.Email, entityUpdateDto.INNPINFL, entityUpdateDto.Phone, entityUpdateDto.Id, cancellationToken))
                 throw new InvalidOperationException("User with this login, email, INNPINFL or phone already exists.");
 
+            var oldEmail = entity.Email;
             _mapper.Map(entityUpdateDto, entity);
+
+            // A new address has not been proven to belong to the user.
+            if (!string.Equals(oldEmail?.Trim(), entity.Email?.Trim(), StringComparison.OrdinalIgnoreCase))
+                entity.EmailConfirmedAt = null;
 
             // An empty password means "keep the current one".
             var passwordChanged = !string.IsNullOrWhiteSpace(entityUpdateDto.Password);

@@ -47,6 +47,8 @@ namespace Persistance.Extentions
             services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
             services.AddSingleton<IHashService, HashService>();
             services.AddSingleton<ITokenService, TokenService>();
+            services.Configure<EmailConfirmationConfiguration>(configuration.GetSection(EmailConfirmationConfiguration.SectionName));
+            services.AddSingleton<IEmailConfirmationTokenService, EmailConfirmationTokenService>();
             services.AddScoped<IPermissionService, PermissionService>();
             services.Configure<EimzoConfiguration>(configuration.GetSection(EimzoConfiguration.SectionName));
             services.AddHttpClient<IEimzoService, EimzoService>((serviceProvider, client) =>
@@ -58,14 +60,9 @@ namespace Persistance.Extentions
 
             services.AddScoped<IFileService>(provider =>
             {
-                var env = provider.GetRequiredService<IWebHostEnvironment>();
-                var webRootPath = env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-
-                if (!Directory.Exists(webRootPath))
-                    Directory.CreateDirectory(webRootPath);
-
+                var env = provider.GetRequiredService<IHostEnvironment>();
                 return new FileService(
-                    webRootPath,
+                    FileStorageLocation.ResolveRootPath(configuration, env.ContentRootPath),
                     configuration["FileStorage:PublicBaseUrl"],
                     configuration.GetValue("FileStorage:MaxFileSizeMb", 20));
             });

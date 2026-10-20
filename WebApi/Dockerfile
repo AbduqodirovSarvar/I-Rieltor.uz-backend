@@ -2,6 +2,11 @@
 
 # Этот этап используется при запуске из VS в быстром режиме (по умолчанию для конфигурации отладки)
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
+# Uploaded files live outside the app folder, owned by the non-root app user, so a new image never touches them.
+# Mount a volume here (docker run -v irieltor-files:/data/files ...) so files survive a new container.
+RUN mkdir -p /data/files && chown $APP_UID:$APP_UID /data/files
+ENV FileStorage__RootPath=/data/files
+VOLUME /data/files
 USER $APP_UID
 WORKDIR /app
 EXPOSE 8080

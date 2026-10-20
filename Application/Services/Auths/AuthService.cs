@@ -1,10 +1,12 @@
-﻿using Application.Interfaces.Auths;
+﻿using Application.Exceptions;
+using Application.Interfaces.Auths;
 using Application.Interfaces.EntityServices;
 using Application.Interfaces.Notifications;
 using Application.Interfaces.Repositories;
 using Application.Models.Dtos.Auths;
 using Application.Models.Results;
 using Application.Models.ViewModels.Auths;
+using Application.Notifications;
 using AutoMapper;
 using Domain.Constants;
 using Domain.Entities;
@@ -28,11 +30,14 @@ namespace Application.Services.Auths
         IEimzoService eimzoService,
         IUserRoleRepository userRoleRepository,
         IRefreshTokenRepository refreshTokenRepository,
-        ICurrentUserService currentUserService
+        ICurrentUserService currentUserService,
+        IEmailConfirmationTokenService emailConfirmationTokenService,
+        IUnitOfWork unitOfWork
         ) : IAuthService
     {
         private const string InvalidCredentialsMessage = "Invalid login or password.";
         private const string InvalidRefreshTokenMessage = "Session has expired. Sign in again.";
+        private const string InvalidConfirmationLinkMessage = "The confirmation link is invalid or has expired.";
 
         // Hash used when the login is unknown, so a failed sign-in takes the same time either way.
         private static string? _dummyPasswordHash;
@@ -46,6 +51,8 @@ namespace Application.Services.Auths
         private readonly IUserRoleRepository _userRoleRepository = userRoleRepository;
         private readonly IRefreshTokenRepository _refreshTokenRepository = refreshTokenRepository;
         private readonly ICurrentUserService _currentUserService = currentUserService;
+        private readonly IEmailConfirmationTokenService _emailConfirmationTokenService = emailConfirmationTokenService;
+        private readonly IUnitOfWork _unitOfWork = unitOfWork;
         public async Task<TokenViewModel> LoginAsync(LoginDto loginDto, CancellationToken cancellationToken)
         {
             var user = await _userRepository
@@ -82,7 +89,13 @@ namespace Application.Services.Auths
             user.PasswordHash = _hashService.Hash(registerDto.Password);
             user.UserRoleId = await GetDefaultRoleIdAsync(cancellationToken);
 
-            return await _userRepository.CreateAsync(user, cancellationToken) != null;
+            var created = await _userRepository.CreateAsync(user, cancellationToken) != null;
+
+            // Registration must not depend on the mail server: a failure is logged and the user can resend the link.
+            if (!string.IsNullOrWhiteSpace(user.Email))
+                await _unitOfWork.AfterCommitAsync(() => SendConfirmationLinkAsync(user, CancellationToken.None));
+
+            return created;
         }
 
         public async Task<TokenViewModel> LoginViaEimzoAsync(LoginViaEimzoDto loginDto, CancellationToken cancellationToken)
@@ -265,11 +278,6 @@ namespace Application.Services.Auths
             return role?.Id;
         }
 
-        public Task<bool> ResetAsync(ResetPasswordDto resetPasswordDto, CancellationToken cancellationToken)
-        {
-            throw new NotImplementedException();
-        }
-
         /// <summary>
         /// A signed challenge proves who the user is, so it can set a new password without email confirmation.
         /// Also lets users who registered through E-IMZO add a password.
@@ -290,9 +298,88 @@ namespace Application.Services.Auths
             return updated;
         }
 
-        public Task<bool> SendEmailAsync(string email, CancellationToken cancellationToken)
+        /// <summary>
+        /// Profile settings: sets a new email, unconfirmed until the user opens the link sent to it.
+        /// The link is sent before the commit, so if the mail server is down nothing changes (503) and the user can retry.
+        /// </summary>
+        public Task<bool> ChangeMyEmailAsync(string email, CancellationToken cancellationToken)
+            => _unitOfWork.ExecuteAsync(async () =>
+            {
+                var user = await GetSignedInUserAsync(cancellationToken);
+                email = email.Trim();
+
+                if (string.Equals(user.Email, email, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (user.EmailConfirmedAt != null)
+                        throw new InvalidOperationException("This email is already confirmed.");
+                }
+                else
+                {
+                    var lower = email.ToLowerInvariant();
+                    if (await _userRepository.AnyAsync(u => u.Id != user.Id && u.Email != null && u.Email.ToLower() == lower, cancellationToken))
+                        throw new ConflictException("This email is used by another account.");
+
+                    user.Email = email;
+                    user.EmailConfirmedAt = null;
+                    await _userRepository.UpdateAsync(user, cancellationToken);
+                }
+
+                await SendConfirmationLinkAsync(user, cancellationToken);
+                return true;
+            }, cancellationToken);
+
+        public async Task<bool> ResendEmailConfirmationAsync(CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            var user = await GetSignedInUserAsync(cancellationToken);
+            if (string.IsNullOrWhiteSpace(user.Email))
+                throw new InvalidOperationException("No email is set. Add one in the profile settings.");
+            if (user.EmailConfirmedAt != null)
+                throw new InvalidOperationException("This email is already confirmed.");
+
+            await SendConfirmationLinkAsync(user, cancellationToken);
+            return true;
+        }
+
+        /// <summary>
+        /// Opening the link twice is fine. A link for an email the user has since changed, or for a deleted user, is refused.
+        /// </summary>
+        public async Task<bool> ConfirmEmailAsync(string token, CancellationToken cancellationToken)
+        {
+            if (!_emailConfirmationTokenService.TryValidate(token, out var userId, out var email))
+                throw new ArgumentException(InvalidConfirmationLinkMessage);
+
+            var user = await _userRepository.GetAsync(x => x.Id == userId, cancellationToken);
+            if (user?.Email == null || !string.Equals(user.Email.Trim(), email, StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException(InvalidConfirmationLinkMessage);
+
+            if (user.EmailConfirmedAt == null)
+            {
+                user.EmailConfirmedAt = DateTime.UtcNow;
+                await _userRepository.UpdateAsync(user, cancellationToken);
+            }
+            return true;
+        }
+
+        private async Task<User> GetSignedInUserAsync(CancellationToken cancellationToken)
+        {
+            var userId = _currentUserService.UserId
+                         ?? throw new UnauthorizedAccessException("Sign in first.");
+            // A user deleted after the access token was issued.
+            return await _userRepository.GetAsync(x => x.Id == userId, cancellationToken)
+                   ?? throw new UnauthorizedAccessException("Sign in first.");
+        }
+
+        private async Task SendConfirmationLinkAsync(User user, CancellationToken cancellationToken)
+        {
+            var (url, expiresAt) = _emailConfirmationTokenService.CreateLink(user.Id, user.Email!);
+            var hours = Math.Max(1, (int)Math.Round((expiresAt - DateTime.UtcNow).TotalHours));
+            var body = HtmlEmailBody.FromTemplate(EmailTemplates.EmailConfirmation, new Dictionary<string, string?>
+            {
+                ["name"] = user.FullName,
+                ["link"] = url,
+                ["hours"] = hours.ToString()
+            });
+            await _emailService.SendEmailAsync(user.Email!, EmailTemplates.EmailConfirmationSubject, body, cancellationToken);
         }
     }
 }

@@ -74,6 +74,12 @@ namespace Domain.Entities
         public string? Email { get; set; }
 
         /// <summary>
+        /// Email tasdiqlangan vaqt (UTC). Null: email yo'q yoki hali tasdiqlanmagan.
+        /// Email o'zgarsa yana null bo'ladi va yangi manzilga tasdiqlash havolasi yuboriladi.
+        /// </summary>
+        public DateTime? EmailConfirmedAt { get; set; } = null;
+
+        /// <summary>
         /// Parolning hash qiymati (PBKDF2). Parolning o'zi hech qachon saqlanmaydi.
         /// Ro'yxat filtrlarida ishlatib bo'lmaydi.
         /// </summary>

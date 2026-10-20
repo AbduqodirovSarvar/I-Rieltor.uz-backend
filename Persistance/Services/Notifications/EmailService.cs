@@ -1,4 +1,7 @@
-﻿using Application.Interfaces.Notifications;
+﻿using Application.Exceptions;
+using Application.Interfaces.Notifications;
+using Application.Notifications;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Persistance.Models.ConfigModels;
 using System;
@@ -11,20 +14,35 @@ using System.Threading.Tasks;
 
 namespace Persistance.Services.Notifications
 {
-    public class EmailService(IOptions<SmtpConfiguration> options) : IEmailService
+    public class EmailService(IOptions<SmtpConfiguration> options, ILogger<EmailService> logger) : IEmailService
     {
         private readonly SmtpConfiguration _smtp = options.Value;
+        private readonly ILogger<EmailService> _logger = logger;
 
-        public async Task<bool> SendEmailAsync(string email, string subject, string body)
+        public async Task SendEmailAsync(string email, string subject, HtmlEmailBody body, CancellationToken cancellationToken = default)
         {
+            ArgumentNullException.ThrowIfNull(body);
+
+            MailAddress to;
+            try
+            {
+                to = new MailAddress(email);
+            }
+            catch (FormatException)
+            {
+                throw new ArgumentException("Email address is not valid.");
+            }
+
             using var message = new MailMessage
             {
                 From = new MailAddress(_smtp.FromAddress, _smtp.FromName),
-                Subject = subject,
-                Body = body,
-                IsBodyHtml = true
+                Subject = SingleLine(subject),
+                Body = body.Html,
+                IsBodyHtml = true,
+                BodyEncoding = Encoding.UTF8,
+                SubjectEncoding = Encoding.UTF8
             };
-            message.To.Add(new MailAddress(email));
+            message.To.Add(to);
 
             using var smtp = new SmtpClient(_smtp.Host, _smtp.Port)
             {
@@ -34,15 +52,19 @@ namespace Persistance.Services.Notifications
 
             try
             {
-                await smtp.SendMailAsync(message);
-                Console.WriteLine("Message sent!");
+                await smtp.SendMailAsync(message, cancellationToken);
+                // Only the domain is logged: the full address is personal data.
+                _logger.LogInformation("Email '{Subject}' sent to a {Domain} address", message.Subject, to.Host);
             }
-            catch (Exception ex)
+            // SmtpException: refused or failed; InvalidOperationException: SMTP host not configured.
+            catch (Exception ex) when (ex is SmtpException or InvalidOperationException)
             {
-                Console.WriteLine($"Error sending email: {ex.Message}");
-                throw;
+                _logger.LogError(ex, "Sending email '{Subject}' to a {Domain} address failed", message.Subject, to.Host);
+                throw new ServiceUnavailableException("The email could not be sent. Try again later.", ex);
             }
-            return true;
         }
+
+        private static string SingleLine(string subject)
+            => new((subject ?? string.Empty).Select(c => char.IsControl(c) ? ' ' : c).ToArray());
     }
 }

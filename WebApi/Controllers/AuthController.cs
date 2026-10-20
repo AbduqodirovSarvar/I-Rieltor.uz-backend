@@ -5,7 +5,7 @@ using Application.Features.Auths.Commands.RefreshToken;
 using Application.Features.Auths.Queries.CurrentUser;
 using Application.Features.Auths.Commands.Register;
 using Application.Features.Auths.Commands.RegisterViaEimzo;
-using Application.Features.Auths.Commands.Reset;
+using Application.Features.Auths.Commands.EmailConfirmation;
 using Application.Features.Auths.Commands.ResetViaEimzo;
 using Application.Features.Auths.Queries.EimzoChallenge;
 using MediatR;
@@ -77,16 +77,6 @@ namespace WebApi.Controllers
             return Ok(result);
         }
 
-        [HttpPost("reset-password")]
-        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordCommand command)
-        {
-            if (command == null)
-                return BadRequest("Request cannot be null");
-
-            var result = await _mediator.Send(command);
-            return Ok(result);
-        }
-
         [HttpPost("reset-password-via-eimzo")]
         public async Task<IActionResult> ResetPasswordViaEimzo([FromBody] ResetPasswordViaEimzoCommand command)
         {
@@ -128,6 +118,38 @@ namespace WebApi.Controllers
         public async Task<IActionResult> Me()
         {
             var result = await _mediator.Send(new GetCurrentUserQuery());
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Profile settings: sets or changes the email and sends a confirmation link to it.
+        /// </summary>
+        [HttpPut("me/email")]
+        [Authorize]
+        public async Task<IActionResult> ChangeMyEmail([FromBody] ChangeMyEmailCommand command)
+        {
+            var result = await _mediator.Send(command);
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Sends the confirmation link again to the current, still unconfirmed email.
+        /// </summary>
+        [HttpPost("me/email/resend-confirmation")]
+        [Authorize]
+        public async Task<IActionResult> ResendEmailConfirmation()
+        {
+            var result = await _mediator.Send(new ResendEmailConfirmationCommand());
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Called by the frontend page the emailed link opens, with the token from that link.
+        /// </summary>
+        [HttpPost("confirm-email")]
+        public async Task<IActionResult> ConfirmEmail([FromBody] ConfirmEmailCommand command)
+        {
+            var result = await _mediator.Send(command);
             return Ok(result);
         }
     }
