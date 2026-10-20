@@ -18,22 +18,35 @@ using System.Threading.Tasks;
 
 namespace Application.Services.EntityServices
 {
+    /// <summary>
+    /// Keeps the disk and the UploadedFiles table in step: a file written for a record that is then
+    /// rolled back is removed, and a replaced or deleted file is moved away only after the commit.
+    /// Create, update and delete are internal steps of the owning entity (slide, company) and rely on its permission.
+    /// </summary>
     public class UploadedFileService(
                         IUploadedFileRepository repository,
                         IPermissionService permissionService,
                         IMapper mapper,
-                        IFileService fileService)
+                        IFileService fileService,
+                        IUnitOfWork unitOfWork)
         : GenericEntityService<UploadedFile,
                                 CreateUploadedFileDto,
                                 UpdateUploadedFileDto,
                                 UploadedFileViewModel>(repository, permissionService, mapper), IUploadedFileService
     {
         private readonly IFileService _fileService = fileService;
+        private readonly IUnitOfWork _unitOfWork = unitOfWork;
 
-        public override async Task<ResponseModel<UploadedFileViewModel>> CreateAsync(CreateUploadedFileDto entityCreateDto, CancellationToken cancellationToken = default)
+        public override Task<ResponseModel<UploadedFileViewModel>> CreateAsync(CreateUploadedFileDto entityCreateDto, CancellationToken cancellationToken = default)
+            => _unitOfWork.ExecuteAsync(() => CreateInTransactionAsync(entityCreateDto, cancellationToken), cancellationToken);
+
+        private async Task<ResponseModel<UploadedFileViewModel>> CreateInTransactionAsync(CreateUploadedFileDto entityCreateDto, CancellationToken cancellationToken)
         {
-            var entity = await _fileService.SaveFileAsync(entityCreateDto.File, entityCreateDto.EntityName.ToLower())
+            var category = entityCreateDto.EntityName.ToLower();
+            var entity = await _fileService.SaveFileAsync(entityCreateDto.File, category)
                                 ?? throw new FileLoadException("File cannot saved");
+            var savedName = entity.Name;
+            _unitOfWork.OnRollback(() => _fileService.DiscardFileAsync(savedName, category));
 
             entity.Alt = entityCreateDto.Alt;
             entity.Description = entityCreateDto.Description;
@@ -46,7 +59,10 @@ namespace Application.Services.EntityServices
             return ResponseModel<UploadedFileViewModel>.Ok(_mapper.Map<UploadedFileViewModel>(result));
         }
 
-        public override async Task<ResponseModel<UploadedFileViewModel>> UpdateAsync(UpdateUploadedFileDto entityUpdateDto, CancellationToken cancellationToken = default)
+        public override Task<ResponseModel<UploadedFileViewModel>> UpdateAsync(UpdateUploadedFileDto entityUpdateDto, CancellationToken cancellationToken = default)
+            => _unitOfWork.ExecuteAsync(() => UpdateInTransactionAsync(entityUpdateDto, cancellationToken), cancellationToken);
+
+        private async Task<ResponseModel<UploadedFileViewModel>> UpdateInTransactionAsync(UpdateUploadedFileDto entityUpdateDto, CancellationToken cancellationToken)
         {
             var entity = await _repository.GetAsync(x => x.Id == entityUpdateDto.Id, cancellationToken)
                                 ?? throw new KeyNotFoundException("Entity not found");
@@ -56,7 +72,10 @@ namespace Application.Services.EntityServices
                 var category = entity.EntityName.ToLower();
                 var newFile = await _fileService.SaveFileAsync(entityUpdateDto.File, category)
                                     ?? throw new FileLoadException("File cannot saved");
-                await _fileService.DeleteFileAsync(entity.Name, category);
+                _unitOfWork.OnRollback(() => _fileService.DiscardFileAsync(newFile.Name, category));
+                // Until the commit the record still points at the old file, so it must stay in place.
+                var oldName = entity.Name;
+                await _unitOfWork.AfterCommitAsync(() => _fileService.DeleteFileAsync(oldName, category));
                 entity.Size = newFile.Size;
                 entity.Url = newFile.Url;
                 entity.Name = newFile.Name;
@@ -73,18 +92,18 @@ namespace Application.Services.EntityServices
             return ResponseModel<UploadedFileViewModel>.Ok(_mapper.Map<UploadedFileViewModel>(result));
         }
 
-        public override async Task<ResponseModel<bool>> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
-        {
-            string entityTypeName = typeof(UploadedFile).Name.ToUpper();
-            if (!await _permissionService.Check($"{OperationType.DELETE}_{entityTypeName}"))
-                throw new UnauthorizedAccessException("You do not have permission to create this entity.");
+        public override Task<ResponseModel<bool>> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+            => _unitOfWork.ExecuteAsync(() => DeleteInTransactionAsync(id, cancellationToken), cancellationToken);
 
+        private async Task<ResponseModel<bool>> DeleteInTransactionAsync(Guid id, CancellationToken cancellationToken)
+        {
             var entity = await _repository.GetAsync(x => x.Id == id, cancellationToken)
                                 ?? throw new KeyNotFoundException("Entity not found");
 
-            await _fileService.DeleteFileAsync(entity.Name, entity.EntityName.ToLower());
+            var deleted = await _repository.DeleteAsync(entity, cancellationToken);
+            await _unitOfWork.AfterCommitAsync(() => _fileService.DeleteFileAsync(entity.Name, entity.EntityName.ToLower()));
 
-            return ResponseModel<bool>.Ok(await _repository.DeleteAsync(entity, cancellationToken));
+            return ResponseModel<bool>.Ok(deleted);
         }
 
         public override async Task<ResponseModel<UploadedFileViewModel?>> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)

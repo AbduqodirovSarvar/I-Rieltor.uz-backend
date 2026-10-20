@@ -24,14 +24,20 @@ namespace Application.Services.EntityServices
         ISlideRepository repository,
         IPermissionService permissionService,
         IMapper mapper,
-        IUploadedFileService uploadedFileService)
+        IUploadedFileService uploadedFileService,
+        IUnitOfWork unitOfWork)
         : GenericEntityService<Slide,
                                CreateSlideDto,
                                UpdateSlideDto,
                                SlideViewModel>(repository, permissionService, mapper), ISlideService
     {
         private readonly IUploadedFileService _uploadedFileService = uploadedFileService;
-        public override async Task<ResponseModel<SlideViewModel>> CreateAsync(CreateSlideDto entityCreateDto, CancellationToken cancellationToken = default)
+        // The slide row and its image (record and file on disk) are saved or rolled back together.
+        private readonly IUnitOfWork _unitOfWork = unitOfWork;
+        public override Task<ResponseModel<SlideViewModel>> CreateAsync(CreateSlideDto entityCreateDto, CancellationToken cancellationToken = default)
+            => _unitOfWork.ExecuteAsync(() => CreateInTransactionAsync(entityCreateDto, cancellationToken), cancellationToken);
+
+        private async Task<ResponseModel<SlideViewModel>> CreateInTransactionAsync(CreateSlideDto entityCreateDto, CancellationToken cancellationToken)
         {
             string entityTypeName = typeof(Slide).Name.ToUpper();
             if (!await _permissionService.Check($"{OperationType.CREATE}_{entityTypeName}"))
@@ -55,7 +61,10 @@ namespace Application.Services.EntityServices
             return ResponseModel<SlideViewModel>.Ok(_mapper.Map<SlideViewModel>(result));
         }
 
-        public override async Task<ResponseModel<SlideViewModel>> UpdateAsync(UpdateSlideDto entityUpdateDto, CancellationToken cancellationToken = default)
+        public override Task<ResponseModel<SlideViewModel>> UpdateAsync(UpdateSlideDto entityUpdateDto, CancellationToken cancellationToken = default)
+            => _unitOfWork.ExecuteAsync(() => UpdateInTransactionAsync(entityUpdateDto, cancellationToken), cancellationToken);
+
+        private async Task<ResponseModel<SlideViewModel>> UpdateInTransactionAsync(UpdateSlideDto entityUpdateDto, CancellationToken cancellationToken)
         {
             string entityTypeName = typeof(Slide).Name.ToUpper();
             if (!await _permissionService.Check($"{OperationType.UPDATE}_{entityTypeName}"))
@@ -83,7 +92,10 @@ namespace Application.Services.EntityServices
             return ResponseModel<SlideViewModel>.Ok(_mapper.Map<SlideViewModel>(result));
         }
 
-        public override async Task<ResponseModel<bool>> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+        public override Task<ResponseModel<bool>> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+            => _unitOfWork.ExecuteAsync(() => DeleteInTransactionAsync(id, cancellationToken), cancellationToken);
+
+        private async Task<ResponseModel<bool>> DeleteInTransactionAsync(Guid id, CancellationToken cancellationToken)
         {
             string entityTypeName = typeof(Slide).Name.ToUpper();
             if (!await _permissionService.Check($"{OperationType.DELETE}_{entityTypeName}"))

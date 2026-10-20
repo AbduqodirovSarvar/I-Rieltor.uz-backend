@@ -23,7 +23,8 @@ namespace Application.Services.EntityServices
         ICompanyRepository repository,
         IPermissionService permissionService,
         IMapper mapper,
-        IUploadedFileService uploadedFileService
+        IUploadedFileService uploadedFileService,
+        IUnitOfWork unitOfWork
         )
         : GenericEntityService<Company,
                                CreateCompanyDto,
@@ -31,7 +32,12 @@ namespace Application.Services.EntityServices
                                CompanyViewModel>(repository, permissionService, mapper), ICompanyService
     {
         private readonly IUploadedFileService _uploadedFileService = uploadedFileService;
-        public override async Task<ResponseModel<CompanyViewModel>> CreateAsync(CreateCompanyDto entityCreateDto, CancellationToken cancellationToken = default)
+        // The company row and its logo (record and file on disk) are saved or rolled back together.
+        private readonly IUnitOfWork _unitOfWork = unitOfWork;
+        public override Task<ResponseModel<CompanyViewModel>> CreateAsync(CreateCompanyDto entityCreateDto, CancellationToken cancellationToken = default)
+            => _unitOfWork.ExecuteAsync(() => CreateInTransactionAsync(entityCreateDto, cancellationToken), cancellationToken);
+
+        private async Task<ResponseModel<CompanyViewModel>> CreateInTransactionAsync(CreateCompanyDto entityCreateDto, CancellationToken cancellationToken)
         {
             string entityTypeName = typeof(Company).Name.ToUpper();
             if (!await _permissionService.Check($"{OperationType.CREATE}_{entityTypeName}"))
@@ -58,7 +64,10 @@ namespace Application.Services.EntityServices
             return ResponseModel<CompanyViewModel>.Ok(_mapper.Map<CompanyViewModel>(result));
         }
 
-        public override async Task<ResponseModel<CompanyViewModel>> UpdateAsync(UpdateCompanyDto entityUpdateDto, CancellationToken cancellationToken = default)
+        public override Task<ResponseModel<CompanyViewModel>> UpdateAsync(UpdateCompanyDto entityUpdateDto, CancellationToken cancellationToken = default)
+            => _unitOfWork.ExecuteAsync(() => UpdateInTransactionAsync(entityUpdateDto, cancellationToken), cancellationToken);
+
+        private async Task<ResponseModel<CompanyViewModel>> UpdateInTransactionAsync(UpdateCompanyDto entityUpdateDto, CancellationToken cancellationToken)
         {
             string entityTypeName = typeof(Company).Name.ToUpper();
             if (!await _permissionService.Check($"{OperationType.UPDATE}_{entityTypeName}"))
@@ -92,7 +101,10 @@ namespace Application.Services.EntityServices
             return ResponseModel<CompanyViewModel>.Ok(_mapper.Map<CompanyViewModel>(result));
         }
 
-        public override async Task<ResponseModel<bool>> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+        public override Task<ResponseModel<bool>> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+            => _unitOfWork.ExecuteAsync(() => DeleteInTransactionAsync(id, cancellationToken), cancellationToken);
+
+        private async Task<ResponseModel<bool>> DeleteInTransactionAsync(Guid id, CancellationToken cancellationToken)
         {
             string entityTypeName = typeof(Company).Name.ToUpper();
             if (!await _permissionService.Check($"{OperationType.DELETE}_{entityTypeName}"))

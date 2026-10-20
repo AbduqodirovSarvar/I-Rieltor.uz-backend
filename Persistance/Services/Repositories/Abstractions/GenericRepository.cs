@@ -1,4 +1,5 @@
 ﻿using Application.Interfaces.Cachings;
+using Application.Interfaces.Repositories;
 using Application.Interfaces.Repositories.Abstractions;
 using Domain.Abstractions;
 using Microsoft.EntityFrameworkCore;
@@ -18,12 +19,14 @@ namespace Persistance.Services.Repositories.Abstractions
         protected readonly AppDbContext _context;
         protected readonly DbSet<TEntity> _dbSet;
         protected readonly IRedisService _redisService;
+        protected readonly IUnitOfWork _unitOfWork;
 
-        public GenericRepository(AppDbContext context, IRedisService redisService)
+        public GenericRepository(AppDbContext context, IRedisService redisService, IUnitOfWork unitOfWork)
         {
             _context = context;
             _dbSet = _context.Set<TEntity>();
             _redisService = redisService;
+            _unitOfWork = unitOfWork;
         }
 
         /// <summary>
@@ -38,12 +41,16 @@ namespace Persistance.Services.Repositories.Abstractions
         /// </summary>
         protected static string CacheKey(Guid id) => $"{typeof(TEntity).Name.ToLowerInvariant()}:{id}";
 
+        // Inside a transaction the cache is touched only after commit, so a rolled-back row never reaches it.
+        private Task CacheAfterCommitAsync(TEntity entity)
+            => _unitOfWork.AfterCommitAsync(() => _redisService.SetAsync(CacheKey(entity.Id), entity, CacheTtl));
+
         public virtual async Task<TEntity> CreateAsync(TEntity entity, CancellationToken cancellationToken = default)
         {
             await _dbSet.AddAsync(entity, cancellationToken);
             await _context.SaveChangesAsync(cancellationToken);
             if (UseCache)
-                await _redisService.SetAsync(CacheKey(entity.Id), entity, CacheTtl);
+                await CacheAfterCommitAsync(entity);
             return entity;
         }
 
@@ -52,7 +59,7 @@ namespace Persistance.Services.Repositories.Abstractions
             _dbSet.Update(entity);
             await _context.SaveChangesAsync(cancellationToken);
             if (UseCache)
-                await _redisService.SetAsync(CacheKey(entity.Id), entity, CacheTtl);
+                await CacheAfterCommitAsync(entity);
             return entity;
         }
 
@@ -61,7 +68,7 @@ namespace Persistance.Services.Repositories.Abstractions
             _dbSet.Remove(entity);
             var deleted = await _context.SaveChangesAsync(cancellationToken) > 0;
             if (UseCache)
-                await _redisService.RemoveAsync(CacheKey(entity.Id));
+                await _unitOfWork.AfterCommitAsync(() => _redisService.RemoveAsync(CacheKey(entity.Id)));
             return deleted;
         }
 

@@ -12,8 +12,8 @@ using System.Threading.Tasks;
 
 namespace Persistance.Services.Repositories
 {
-    public class UserRepository(AppDbContext context, IRedisService redisService)
-        : GenericRepository<User>(context, redisService), IUserRepository
+    public class UserRepository(AppDbContext context, IRedisService redisService, IUnitOfWork unitOfWork)
+        : GenericRepository<User>(context, redisService, unitOfWork), IUserRepository
     {
         // Users carry PasswordHash, so they are never written to Redis.
         protected override bool UseCache => false;

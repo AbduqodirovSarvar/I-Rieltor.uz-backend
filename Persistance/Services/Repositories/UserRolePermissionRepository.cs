@@ -11,8 +11,8 @@ using System.Threading.Tasks;
 
 namespace Persistance.Services.Repositories
 {
-    public class UserRolePermissionRepository(AppDbContext context, IRedisService redisService)
-        : GenericRepository<UserRolePermission>(context, redisService), IUserRolePermissionRepository
+    public class UserRolePermissionRepository(AppDbContext context, IRedisService redisService, IUnitOfWork unitOfWork)
+        : GenericRepository<UserRolePermission>(context, redisService, unitOfWork), IUserRolePermissionRepository
     {
     }
 }

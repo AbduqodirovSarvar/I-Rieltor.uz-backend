@@ -11,6 +11,9 @@ namespace Application.Interfaces.Files
     public interface IFileService
     {
         Task<UploadedFile> SaveFileAsync(IFormFile fileBytes, string category = "default");
+        /// <summary>Moves a stored file to wwwroot/deleted, so it can still be recovered.</summary>
         Task DeleteFileAsync(string fileName, string category = "default");
+        /// <summary>Removes for good a file whose database record was never committed.</summary>
+        Task DiscardFileAsync(string fileName, string category = "default");
     }
 }

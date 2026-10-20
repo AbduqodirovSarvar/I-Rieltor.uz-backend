@@ -11,8 +11,8 @@ using System.Threading.Tasks;
 
 namespace Persistance.Services.Repositories
 {
-    public class CompanyRepository(AppDbContext context, IRedisService redisService)
-        : GenericRepository<Company>(context, redisService), ICompanyRepository
+    public class CompanyRepository(AppDbContext context, IRedisService redisService, IUnitOfWork unitOfWork)
+        : GenericRepository<Company>(context, redisService, unitOfWork), ICompanyRepository
     {
     }
 }

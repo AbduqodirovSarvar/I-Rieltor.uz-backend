@@ -106,6 +106,14 @@ namespace Persistance.Services.Files
             await Task.CompletedTask;
         }
 
+        public Task DiscardFileAsync(string fileName, string category = "default")
+        {
+            var path = Path.Combine(GetUploadPath(category), fileName);
+            if (File.Exists(path))
+                File.Delete(path);
+            return Task.CompletedTask;
+        }
+
         private static readonly byte[] PngSignature = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
         private static readonly byte[] JpegSignature = [0xFF, 0xD8, 0xFF];
         private static readonly byte[] Gif87Signature = "GIF87a"u8.ToArray();

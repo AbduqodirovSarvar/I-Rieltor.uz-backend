@@ -11,8 +11,8 @@ using System.Threading.Tasks;
 
 namespace Persistance.Services.Repositories
 {
-    public class SlideRepository(AppDbContext context, IRedisService redisService)
-        : GenericRepository<Slide>(context, redisService), ISlideRepository
+    public class SlideRepository(AppDbContext context, IRedisService redisService, IUnitOfWork unitOfWork)
+        : GenericRepository<Slide>(context, redisService, unitOfWork), ISlideRepository
     {
     }
 }

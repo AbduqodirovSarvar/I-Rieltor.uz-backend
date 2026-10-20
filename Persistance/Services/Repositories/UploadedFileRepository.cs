@@ -13,8 +13,8 @@ using System.Threading.Tasks;
 
 namespace Persistance.Services.Repositories
 {
-    public class UploadedFileRepository(AppDbContext context, IRedisService redisService)
-        : GenericRepository<UploadedFile>(context, redisService), IUploadedFileRepository
+    public class UploadedFileRepository(AppDbContext context, IRedisService redisService, IUnitOfWork unitOfWork)
+        : GenericRepository<UploadedFile>(context, redisService, unitOfWork), IUploadedFileRepository
     {
     }
 }

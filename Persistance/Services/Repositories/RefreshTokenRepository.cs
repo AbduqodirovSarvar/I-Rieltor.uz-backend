@@ -7,8 +7,8 @@ using Persistance.Services.Repositories.Abstractions;
 
 namespace Persistance.Services.Repositories
 {
-    public class RefreshTokenRepository(AppDbContext context, IRedisService redisService)
-        : GenericRepository<RefreshToken>(context, redisService), IRefreshTokenRepository
+    public class RefreshTokenRepository(AppDbContext context, IRedisService redisService, IUnitOfWork unitOfWork)
+        : GenericRepository<RefreshToken>(context, redisService, unitOfWork), IRefreshTokenRepository
     {
         // Revocation must take effect immediately, so tokens are always read from the database.
         protected override bool UseCache => false;

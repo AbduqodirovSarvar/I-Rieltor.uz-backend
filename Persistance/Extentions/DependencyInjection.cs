@@ -36,6 +36,7 @@ namespace Persistance.Extentions
         public static IServiceCollection AddPersistance(this IServiceCollection services, IConfiguration configuration)
         {
             services.AddScoped<ICurrentUserService, CurrentUserService>();
+            services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IUserRoleRepository, UserRoleRepository>();
