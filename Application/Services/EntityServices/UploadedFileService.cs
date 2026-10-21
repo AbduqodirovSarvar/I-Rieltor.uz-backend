@@ -7,7 +7,7 @@ using Application.Models.Dtos.UploadedFiles;
 using Application.Models.Results;
 using Application.Models.ViewModels.UploadedFiles;
 using Application.Services.EntityServices.Abstractions;
-using AutoMapper;
+using MapsterMapper;
 using Domain.Entities;
 using Domain.Enums;
 using System;

@@ -11,6 +11,7 @@ namespace Persistance.Models.ConfigModels
         /// </summary>
         public string LinkBaseUrl { get; set; } = null!;
 
+        [System.ComponentModel.DataAnnotations.Range(1, 168)]
         public int TokenHours { get; set; } = 24;
     }
 }

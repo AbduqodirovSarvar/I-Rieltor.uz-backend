@@ -2,7 +2,7 @@
 using Application.Models.Dtos.Abstractions;
 using Application.Models.Requests.Abstractions;
 using Domain.Enums.Actions;
-using MediatR;
+using Application.Messaging;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebApi.Controllers.Abstractions;

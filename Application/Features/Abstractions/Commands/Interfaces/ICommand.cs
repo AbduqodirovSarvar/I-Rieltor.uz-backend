@@ -1,4 +1,4 @@
-﻿using MediatR;
+﻿using Application.Messaging;
 using System;
 using System.Collections.Generic;
 using System.Linq;

@@ -9,7 +9,7 @@ using Application.Features.Auths.Commands.RegisterViaEimzo;
 using Application.Features.Auths.Commands.EmailConfirmation;
 using Application.Features.Auths.Commands.ResetViaEimzo;
 using Application.Features.Auths.Queries.EimzoChallenge;
-using MediatR;
+using Application.Messaging;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;

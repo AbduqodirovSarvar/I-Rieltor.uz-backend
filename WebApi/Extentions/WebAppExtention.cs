@@ -1,4 +1,8 @@
-﻿using Application.Interfaces.Auths;
+﻿using WebApi.Middlewares;
+using Serilog.Events;
+using Serilog;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Application.Interfaces.Auths;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
@@ -14,6 +18,15 @@ namespace WebApi.Extentions
         {
             // First: everything after it (rate limits, logging, HTTPS redirect, E-IMZO X-Real-IP) must see the real client.
             app.UseForwardedHeaders();
+            app.UseMiddleware<CorrelationIdMiddleware>();
+            // One line per request (method, path, status, time); before the exception handler, so a 500 is logged as such.
+            app.UseSerilogRequestLogging(options =>
+            {
+                options.GetLevel = (context, _, exception) =>
+                    context.Request.Path.StartsWithSegments("/health") ? LogEventLevel.Verbose
+                    : exception != null || context.Response.StatusCode >= 500 ? LogEventLevel.Error
+                    : LogEventLevel.Information;
+            });
             app.UseExceptionHandler();
 
             // API documentation is exposed only on developer machines.
@@ -27,13 +40,15 @@ namespace WebApi.Extentions
                 });
             }
 
-            app.UseHttpsRedirection();
             app.UseCors(DepencyInjection.CorsPolicy);
             app.UseUploadedFiles();
             app.UseAuthentication();
             app.UseAuthorization();
             app.UseRateLimiter();
             app.MapControllers();
+            // live: the process answers (no dependencies); ready: the database too (used by the Docker healthcheck).
+            app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
+            app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") });
 
             // Database:MigrateOnStartup (default true): with several instances, or migrations applied by a CI step /
             // migration bundle, set it to false so a start never changes the schema.

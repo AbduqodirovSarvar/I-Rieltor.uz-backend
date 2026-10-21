@@ -75,7 +75,8 @@ namespace WebApi.Handlers
             httpContext.Response.StatusCode = (int)status;
             if (exception is TooManyRequestsException { RetryAfter: { } retryAfter })
                 httpContext.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(System.Globalization.CultureInfo.InvariantCulture);
-            await httpContext.Response.WriteAsJsonAsync(ResponseModel<object>.Fail(message, statusCode: status), cancellationToken);
+            var errors = (exception as BadRequestException)?.Errors?.ToList();
+            await httpContext.Response.WriteAsJsonAsync(ResponseModel<object>.Fail(message, errors, status), cancellationToken);
             return true;
         }
     }

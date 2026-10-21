@@ -5,7 +5,7 @@ using Application.Features.Slides.Queries.GetList;
 using Application.Features.Slides.Queries.GetOne;
 using Application.Features.Slides.Queries.GetPublicList;
 using Domain.Enums.Actions;
-using MediatR;
+using Application.Messaging;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;

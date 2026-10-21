@@ -5,7 +5,7 @@ using Application.Features.Users.Commands.Update;
 using Application.Features.Users.Queries.GetList;
 using Application.Features.Users.Queries.GetOne;
 using Domain.Enums.Actions;
-using MediatR;
+using Application.Messaging;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebApi.Controllers.Abstractions;

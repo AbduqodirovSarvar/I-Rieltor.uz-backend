@@ -79,6 +79,7 @@ namespace Persistance.Services.Files
                     var target = Path.Combine(root, "deleted", "orphans", category);
                     Directory.CreateDirectory(target);
                     File.Move(path, Path.Combine(target, name), overwrite: true);
+                    File.SetLastWriteTimeUtc(Path.Combine(target, name), DateTime.UtcNow);
                     moved++;
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)

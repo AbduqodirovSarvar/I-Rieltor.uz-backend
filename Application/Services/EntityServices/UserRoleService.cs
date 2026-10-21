@@ -8,7 +8,7 @@ using Application.Models.Dtos.UserRoles;
 using Application.Models.Results;
 using Application.Models.ViewModels.UserRoles;
 using Application.Services.EntityServices.Abstractions;
-using AutoMapper;
+using MapsterMapper;
 using Domain.Constants;
 using Domain.Entities;
 using Domain.Enums;

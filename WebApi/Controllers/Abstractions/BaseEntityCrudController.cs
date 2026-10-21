@@ -1,6 +1,6 @@
 ﻿using Application.Models.Dtos.Abstractions;
 using Application.Models.Requests.Abstractions;
-using MediatR;
+using Application.Messaging;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

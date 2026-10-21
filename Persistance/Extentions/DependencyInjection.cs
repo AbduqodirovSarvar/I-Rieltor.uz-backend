@@ -1,4 +1,6 @@
-﻿using Application.Authorization;
+﻿using Persistance.Services.Maintenance;
+using Persistance.Services.Health;
+using Application.Authorization;
 using Application.Interfaces.Auths;
 using Application.Interfaces.Cachings;
 using Application.Interfaces.Files;
@@ -48,10 +50,14 @@ namespace Persistance.Extentions
             services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
             services.AddSingleton<IHashService, HashService>();
             services.AddSingleton<ITokenService, TokenService>();
-            services.Configure<EmailConfirmationConfiguration>(configuration.GetSection(EmailConfirmationConfiguration.SectionName));
+            // A typo in a number (e.g. TokenHours=0) stops the app at start, not at the first email or sign-in.
+            // Missing strings (SMTP host, link base URL) are still reported when used, so one gap breaks only that feature.
+            services.AddOptions<EmailConfirmationConfiguration>().Bind(configuration.GetSection(EmailConfirmationConfiguration.SectionName))
+                    .ValidateDataAnnotations().ValidateOnStart();
             services.AddSingleton<IEmailConfirmationTokenService, EmailConfirmationTokenService>();
             services.AddScoped<IPermissionService, PermissionService>();
-            services.Configure<EimzoConfiguration>(configuration.GetSection(EimzoConfiguration.SectionName));
+            services.AddOptions<EimzoConfiguration>().Bind(configuration.GetSection(EimzoConfiguration.SectionName))
+                    .ValidateDataAnnotations().ValidateOnStart();
             services.AddHttpClient<IEimzoService, EimzoService>((serviceProvider, client) =>
             {
                 var eimzo = serviceProvider.GetRequiredService<IOptions<EimzoConfiguration>>().Value;
@@ -69,8 +75,17 @@ namespace Persistance.Extentions
             });
 
             services.AddHostedService<OrphanFileCleanupService>();
+            // Singleton as well, so a test or an admin task can run one pass (RunOnceAsync).
+            services.AddSingleton<DataRetentionService>();
+            services.AddHostedService(sp => sp.GetRequiredService<DataRetentionService>());
 
-            services.Configure<SmtpConfiguration>(configuration.GetSection(SmtpConfiguration.SectionName));
+            // /health/ready (WebApi): the database must answer; Redis down only degrades (the API works without the cache).
+            services.AddHealthChecks()
+                    .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"])
+                    .AddCheck<RedisHealthCheck>("redis", failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded, tags: ["ready"]);
+
+            services.AddOptions<SmtpConfiguration>().Bind(configuration.GetSection(SmtpConfiguration.SectionName))
+                    .ValidateDataAnnotations().ValidateOnStart();
             services.Configure<DefaultAdminConfiguration>(configuration.GetSection(DefaultAdminConfiguration.SectionName));
             services.AddScoped<IEmailService, EmailService>();
 
@@ -105,7 +120,8 @@ namespace Persistance.Extentions
                     options.EnableSensitiveDataLogging();
             });
 
-            services.Configure<JWTConfiguration>(configuration.GetSection("JWTConfiguration"));
+            services.AddOptions<JWTConfiguration>().Bind(configuration.GetSection("JWTConfiguration"))
+                    .ValidateDataAnnotations().ValidateOnStart();
 
             var secretWord = configuration["JWTConfiguration:Secret"];
             if (string.IsNullOrWhiteSpace(secretWord) || Encoding.UTF8.GetByteCount(secretWord) < 32)

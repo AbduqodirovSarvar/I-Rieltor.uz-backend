@@ -1,4 +1,4 @@
-﻿using MediatR;
+﻿using Application.Messaging;
 using Microsoft.AspNetCore.Mvc;
 
 namespace WebApi.Controllers.Abstractions

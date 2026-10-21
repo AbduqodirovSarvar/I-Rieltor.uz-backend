@@ -3,7 +3,7 @@ using Application.Features.Abstractions.Queries.Interfaces;
 using Application.Interfaces.EntityServices;
 using Application.Models.Results;
 using Application.Models.ViewModels.Users;
-using AutoMapper;
+using MapsterMapper;
 
 namespace Application.Features.Auths.Queries.CurrentUser
 {

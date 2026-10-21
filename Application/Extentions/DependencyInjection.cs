@@ -1,4 +1,8 @@
-﻿using Application.Authorization;
+﻿using Application.Behaviours;
+using Application.Messaging;
+using Mapster;
+using MapsterMapper;
+using Application.Authorization;
 using Application.Interfaces.Auths;
 using Application.Interfaces.EntityServices;
 using Application.Mappings;
@@ -17,10 +21,7 @@ namespace Application.Extentions
     {
         public static IServiceCollection AddApplicationServices(this IServiceCollection services)
         {
-            services.AddMediatR(cfg =>
-            {
-                cfg.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly);
-            });
+            services.AddMediator(typeof(DependencyInjection).Assembly, typeof(DataAnnotationsValidationBehavior<,>));
 
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<IUserService, UserService>();
@@ -31,12 +32,12 @@ namespace Application.Extentions
             services.AddScoped<ISlideService, SlideService>();
             services.AddScoped<ICompanyService, CompanyService>();
 
-            // Resolvers with dependencies are created by the container.
-            services.AddTransient<FileUrlResolver>();
-            services.AddAutoMapper(cfg =>
-            {
-                cfg.AddMaps(typeof(AssemblyMarker).Assembly);
-            });
+            // ServiceMapper (not the plain Mapper) gives mapping rules the request's services (MapContext.Current.GetService).
+            var mappingConfig = new TypeAdapterConfig();
+            mappingConfig.Scan(typeof(MappingConfig).Assembly);
+            mappingConfig.Compile();   // a broken rule fails at startup, not on the first request that uses it
+            services.AddSingleton(mappingConfig);
+            services.AddScoped<IMapper, ServiceMapper>();
 
             return services;
         }

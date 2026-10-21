@@ -22,6 +22,9 @@ namespace Persistance.Services.Notifications
         public async Task SendEmailAsync(string email, string subject, HtmlEmailBody body, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(body);
+            // Like a mail server that is down: email fails (503), everything else keeps working.
+            if (string.IsNullOrWhiteSpace(_smtp.Host) || string.IsNullOrWhiteSpace(_smtp.FromAddress))
+                throw new ServiceUnavailableException("The email could not be sent. Try again later.");
 
             MailAddress to;
             try

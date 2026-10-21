@@ -8,7 +8,7 @@ using Application.Models.Dtos.Auths;
 using Application.Models.Results;
 using Application.Models.ViewModels.Auths;
 using Application.Notifications;
-using AutoMapper;
+using MapsterMapper;
 using Domain.Constants;
 using Domain.Entities;
 using Domain.Enums;

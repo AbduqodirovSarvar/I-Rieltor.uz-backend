@@ -1,0 +1,7 @@
+<Project>
+  <!-- packages.lock.json in every project: restore (CI, Docker) uses exactly the versions committed. After adding or
+       updating a package, commit the changed lock file too. -->
+  <PropertyGroup>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+</Project>

@@ -9,7 +9,7 @@ using Application.Models.Dtos.Users;
 using Application.Models.Results;
 using Application.Models.ViewModels.Users;
 using Application.Services.EntityServices.Abstractions;
-using AutoMapper;
+using MapsterMapper;
 using Domain.Entities;
 using Domain.Enums;
 using System;
@@ -214,7 +214,7 @@ namespace Application.Services.EntityServices
             {
                 if (string.IsNullOrWhiteSpace(dto.FirstName) || string.IsNullOrWhiteSpace(dto.LastName))
                     throw new BadRequestException("To change the name from its parts send both LastName and FirstName, or send FullName.");
-                entity.FullName = Mappings.UserMappingProfile.BuildFullName(dto.LastName, dto.FirstName, dto.MiddleName);
+                entity.FullName = Mappings.MappingConfig.BuildFullName(dto.LastName, dto.FirstName, dto.MiddleName);
             }
 
             entity.Login = clear(nameof(dto.Login)) ? null : dto.Login ?? entity.Login;

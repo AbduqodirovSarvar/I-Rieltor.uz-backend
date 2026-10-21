@@ -6,7 +6,7 @@ using Application.Interfaces.Repositories.Abstractions;
 using Application.Models.Dtos.Abstractions;
 using Application.Models.Results;
 using Application.Models.ViewModels.Abstractions;
-using AutoMapper;
+using MapsterMapper;
 using Domain.Abstractions;
 using Domain.Enums;
 using System;

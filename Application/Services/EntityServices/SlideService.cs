@@ -9,7 +9,7 @@ using Application.Models.Dtos.UploadedFiles;
 using Application.Models.Results;
 using Application.Models.ViewModels.Slides;
 using Application.Services.EntityServices.Abstractions;
-using AutoMapper;
+using MapsterMapper;
 using Domain.Entities;
 using Domain.Enums;
 using Microsoft.AspNetCore.Http;

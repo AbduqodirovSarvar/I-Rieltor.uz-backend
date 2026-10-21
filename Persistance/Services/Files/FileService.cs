@@ -112,6 +112,8 @@ namespace Persistance.Services.Files
                 throw new IOException($"File '{fileName}' already exists in deleted/{category}.");
             }
             File.Move(sourcePath, destinationPath);
+            // Retention (DataRetentionService) counts the days in deleted/ from now, not from the upload.
+            File.SetLastWriteTimeUtc(destinationPath, DateTime.UtcNow);
             await Task.CompletedTask;
         }
 
