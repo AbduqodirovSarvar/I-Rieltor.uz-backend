@@ -28,6 +28,22 @@ namespace Application.Models.ViewModels.Public
         public DateTime EndsAt { get; init; }
     }
 
+    /// <summary>Auksion sahifasi: shartlar, holat va faollik. Qoralama auksion ko'rinmaydi.</summary>
+    public record PublicAuctionDetailViewModel : PublicAuctionSummaryViewModel
+    {
+        public string Title { get; init; } = string.Empty;
+        public string? Description { get; init; }
+        public int ExtensionMinutes { get; init; }
+        public Guid PropertyId { get; init; }
+        public string PropertyTitle { get; init; } = string.Empty;
+        /// <summary>Tasdiqlangan ishtirokchilar soni.</summary>
+        public int ParticipantCount { get; init; }
+        public int BidCount { get; init; }
+        /// <summary>Tugagan auksionda natija (g'olib ismsiz).</summary>
+        public AuctionOutcome? Outcome { get; init; }
+        public decimal? FinalPrice { get; init; }
+    }
+
     public record PublicPropertyListItemViewModel
     {
         public Guid Id { get; init; }

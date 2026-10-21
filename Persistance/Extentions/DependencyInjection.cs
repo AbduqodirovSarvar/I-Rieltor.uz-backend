@@ -52,6 +52,10 @@ namespace Persistance.Extentions
             services.AddScoped<IPropertyRepository, PropertyRepository>();
             services.AddScoped<IPropertyMediaRepository, PropertyMediaRepository>();
             services.AddScoped<IAuctionRepository, AuctionRepository>();
+            services.AddScoped<IAuctionParticipantRepository, AuctionParticipantRepository>();
+            services.AddScoped<IBidRepository, BidRepository>();
+            services.AddScoped<IAuctionResultRepository, AuctionResultRepository>();
+            services.AddScoped<IAuctionAwardRepository, AuctionAwardRepository>();
             services.AddSingleton<IHashService, HashService>();
             services.AddSingleton<ITokenService, TokenService>();
             // A typo in a number (e.g. TokenHours=0) stops the app at start, not at the first email or sign-in.
@@ -79,6 +83,7 @@ namespace Persistance.Extentions
             });
 
             services.AddHostedService<OrphanFileCleanupService>();
+            services.AddHostedService<AuctionLifecycleBackgroundService>();
             // Singleton as well, so a test or an admin task can run one pass (RunOnceAsync).
             services.AddSingleton<DataRetentionService>();
             services.AddHostedService(sp => sp.GetRequiredService<DataRetentionService>());

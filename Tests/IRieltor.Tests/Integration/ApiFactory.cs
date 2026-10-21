@@ -48,6 +48,8 @@ namespace IRieltor.Tests.Integration
                 ["FileStorage__RootPath"] = _files,
                 ["FileStorage__OrphanCleanupIntervalHours"] = "0",
                 ["Retention__IntervalHours"] = "0",
+                // The tests move the auctions along themselves (AuctionLifecycleService.RunOnceAsync with their own clock).
+                ["Auctions__LifecycleIntervalSeconds"] = "0",
                 // TestServer has no client IP: every request shares one rate-limit bucket.
                 ["RateLimiting__AuthPermitPerMinute"] = "1000",
                 ["RateLimiting__SessionPermitPerMinute"] = "1000",

@@ -1,4 +1,6 @@
 ﻿using Application.Behaviours;
+using Application.Interfaces.Auctions;
+using Application.Services.Auctions;
 using Application.Messaging;
 using Mapster;
 using MapsterMapper;
@@ -33,6 +35,9 @@ namespace Application.Extentions
             services.AddScoped<ICompanyService, CompanyService>();
             services.AddScoped<IPropertyCategoryService, PropertyCategoryService>();
             services.AddScoped<IPropertyService, PropertyService>();
+            services.AddScoped<IAuctionService, AuctionService>();
+            services.AddScoped<IAuctionLifecycleService, AuctionLifecycleService>();
+            services.AddScoped<AuctionTransitions>();
 
             // ServiceMapper (not the plain Mapper) gives mapping rules the request's services (MapContext.Current.GetService).
             var mappingConfig = new TypeAdapterConfig();

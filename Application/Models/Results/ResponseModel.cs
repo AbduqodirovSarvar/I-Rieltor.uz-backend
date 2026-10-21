@@ -10,6 +10,8 @@ namespace Application.Models.Results
     public class ResponseModel<TEntity>
     {
         public bool Success { get; set; }
+        /// <summary>Always the number (200, 404...), whatever the global enum setting: clients compare it as a number.</summary>
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonNumberEnumConverter<HttpStatusCode>))]
         public HttpStatusCode? StatusCode { get; set; } = HttpStatusCode.OK;
         public string? Message { get; set; }
         public List<string>? Errors { get; set; }

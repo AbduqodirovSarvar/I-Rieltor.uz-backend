@@ -35,7 +35,12 @@ namespace WebApi.Extentions
             builder.Services.AddProblemDetails();
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddControllers(options => options.ModelBinderProviders.Insert(0, new UtcDateTimeModelBinderProvider()))
-                .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new UtcDateTimeJsonConverter()))
+                .AddJsonOptions(options =>
+                {
+                    options.JsonSerializerOptions.Converters.Add(new UtcDateTimeJsonConverter());
+                    // "SCHEDULED" instead of 1: readable for the frontend and the same as in the database. Numbers are still accepted.
+                    options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+                })
                 // Validation errors in the same ResponseModel shape as every other error, not ProblemDetails.
                 .ConfigureApiBehaviorOptions(options => options.InvalidModelStateResponseFactory = context =>
                 {

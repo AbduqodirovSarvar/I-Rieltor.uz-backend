@@ -35,6 +35,7 @@ namespace IRieltor.Tests.Integration
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
             var body = await ApiFactory.JsonAsync(response);
             Assert.False(body["success"]!.GetValue<bool>());
+            Assert.Equal(401, body["statusCode"]!.GetValue<int>());   // a number, although enums are names elsewhere
             Assert.Equal("Invalid login or password.", body["message"]!.GetValue<string>());
         }
 
@@ -45,7 +46,9 @@ namespace IRieltor.Tests.Integration
                 new { firstName = "A", lastName = "B", login = "v1", email = "not-an-email", password = "weak" });
 
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-            var errors = (await ApiFactory.JsonAsync(response))["errors"]!.AsArray().Select(e => e!.GetValue<string>()).ToList();
+            var body = await ApiFactory.JsonAsync(response);
+            Assert.Equal(400, body["statusCode"]!.GetValue<int>());   // a number on this path too (MVC's serializer, which writes enums as names)
+            var errors = body["errors"]!.AsArray().Select(e => e!.GetValue<string>()).ToList();
             Assert.Contains(errors, e => e.StartsWith("Email:"));
             Assert.Contains(errors, e => e.StartsWith("Password:"));
         }
