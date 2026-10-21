@@ -36,7 +36,12 @@ namespace WebApi.Extentions
             app.UseRateLimiter();
             app.MapControllers();
 
-            await app.UpdateMigration();
+            // Database:MigrateOnStartup (default true): with several instances, or migrations applied by a CI step /
+            // migration bundle, set it to false so a start never changes the schema.
+            if (app.Configuration.GetValue("Database:MigrateOnStartup", true))
+                await app.UpdateMigration();
+            else
+                app.Logger.LogInformation("Database:MigrateOnStartup is false; pending migrations are not applied");
             await app.SeedAsync();
         }
 

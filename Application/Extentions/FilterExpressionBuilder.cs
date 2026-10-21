@@ -1,4 +1,5 @@
-﻿using Application.Models.Requests.Abstractions;
+﻿using Application.Exceptions;
+using Application.Models.Requests.Abstractions;
 using Domain.Abstractions;
 using Domain.Behaviours;
 using System;
@@ -15,7 +16,7 @@ namespace Application.Extentions
     /// <summary>
     /// Builds a predicate from list query filters of the form <c>Filters[property.operation]=value</c>.
     /// Only scalar properties without <see cref="NotFilterableAttribute"/> can be filtered.
-    /// Invalid filters throw <see cref="ArgumentException"/>, which the API returns as 400.
+    /// Invalid filters throw <see cref="BadRequestException"/>, which the API returns as 400.
     /// Also builds the list query's <c>SearchText</c> and <c>SortBy</c>/<c>SortDirection</c> parts.
     /// </summary>
     public static class FilterExpressionBuilder
@@ -65,13 +66,13 @@ namespace Application.Extentions
             {
                 "asc" => false,
                 "desc" => true,
-                _ => throw new ArgumentException("SortDirection must be 'asc' or 'desc'.")
+                _ => throw new BadRequestException("SortDirection must be 'asc' or 'desc'.")
             };
 
             PropertyInfo? property = typeof(T).GetProperty(query.SortBy, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
             // Sorting reveals a value's order as much as a range filter does, so the same properties are refused.
             if (property == null || property.IsDefined(typeof(NotFilterableAttribute)) || !IsScalar(property.PropertyType))
-                throw new ArgumentException($"Sorting by '{query.SortBy}' is not allowed.");
+                throw new BadRequestException($"Sorting by '{query.SortBy}' is not allowed.");
 
             ParameterExpression param = Expression.Parameter(typeof(T), "x");
             var keySelector = Expression.Lambda(Expression.Property(param, property), param);
@@ -97,7 +98,7 @@ namespace Application.Extentions
                 .Where(p => p.PropertyType == typeof(string) && p.IsDefined(typeof(SearchableAttribute)))
                 .ToList();
             if (properties.Count == 0)
-                throw new ArgumentException("Search is not supported for this list.");
+                throw new BadRequestException("Search is not supported for this list.");
 
             var term = Expression.Constant(searchText.Trim().ToLowerInvariant());
             Expression? any = null;
@@ -124,7 +125,7 @@ namespace Application.Extentions
             {
                 var parts = filter.Key.Split('.', 2);
                 if (parts.Length != 2)
-                    throw new ArgumentException($"Filter '{filter.Key}' must have the form 'property.operation'.");
+                    throw new BadRequestException($"Filter '{filter.Key}' must have the form 'property.operation'.");
 
                 string propertyName = parts[0];
                 string operation = parts[1].ToLowerInvariant();
@@ -133,7 +134,7 @@ namespace Application.Extentions
                 PropertyInfo? property = typeof(T).GetProperty(propertyName, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
                 // Unknown and forbidden properties get the same answer, so the error does not reveal which exist.
                 if (property == null || property.IsDefined(typeof(NotFilterableAttribute)) || !IsScalar(property.PropertyType))
-                    throw new ArgumentException($"Filtering by '{propertyName}' is not allowed.");
+                    throw new BadRequestException($"Filtering by '{propertyName}' is not allowed.");
 
                 var isString = property.PropertyType == typeof(string);
                 Expression left = Expression.Property(param, property);
@@ -147,7 +148,7 @@ namespace Application.Extentions
                     "notequals" => Expression.NotEqual(left, TypedConstant(valueString, property)),
                     "greaterthan" or "morethan" when !isString => Expression.GreaterThan(left, TypedConstant(valueString, property)),
                     "lessthan" when !isString => Expression.LessThan(left, TypedConstant(valueString, property)),
-                    _ => throw new ArgumentException($"Operation '{parts[1]}' cannot be used with '{propertyName}'.")
+                    _ => throw new BadRequestException($"Operation '{parts[1]}' cannot be used with '{propertyName}'.")
                 };
 
                 combined = combined == null ? condition : Expression.AndAlso(combined, condition);
@@ -175,7 +176,7 @@ namespace Application.Extentions
             }
             catch (Exception ex) when (ex is FormatException or InvalidCastException or OverflowException or ArgumentException)
             {
-                throw new ArgumentException($"Value '{value}' is not valid for '{property.Name}'.");
+                throw new BadRequestException($"Value '{value}' is not valid for '{property.Name}'.");
             }
         }
 

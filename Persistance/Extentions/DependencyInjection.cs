@@ -67,6 +67,8 @@ namespace Persistance.Extentions
                     configuration.GetValue("FileStorage:MaxFileSizeMb", 20));
             });
 
+            services.AddHostedService<OrphanFileCleanupService>();
+
             services.Configure<SmtpConfiguration>(configuration.GetSection(SmtpConfiguration.SectionName));
             services.Configure<DefaultAdminConfiguration>(configuration.GetSection(DefaultAdminConfiguration.SectionName));
             services.AddScoped<IEmailService, EmailService>();

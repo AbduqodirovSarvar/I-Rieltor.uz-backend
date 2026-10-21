@@ -14,8 +14,10 @@ namespace Application.Models.Requests.Abstractions
         /// <summary>
         /// Zero-based page number.
         /// </summary>
-        [Range(0, int.MaxValue)]
+        /// <remarks>Capped so PageIndex * PageSize (the SQL OFFSET) cannot overflow int.</remarks>
+        [Range(0, MaxPageIndex)]
         public int PageIndex { get; init; } = 0;
+        public const int MaxPageIndex = 1_000_000;
 
         /// <summary>
         /// Items per page; capped so one request cannot load a whole table.

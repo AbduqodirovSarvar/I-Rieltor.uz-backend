@@ -1,4 +1,6 @@
-﻿using Application.Interfaces.Auths;
+﻿using Application.Models.ViewModels.Public;
+using Application.Exceptions;
+using Application.Interfaces.Auths;
 using Application.Interfaces.EntityServices;
 using Application.Interfaces.Repositories;
 using Application.Models.Dtos.Companies;
@@ -41,7 +43,7 @@ namespace Application.Services.EntityServices
         {
             string entityTypeName = typeof(Company).Name.ToUpper();
             if (!await _permissionService.Check($"{OperationType.CREATE}_{entityTypeName}"))
-                throw new UnauthorizedAccessException("You do not have permission to create this entity.");
+                throw new ForbiddenException("You do not have permission to create this entity.");
 
             var entity = _mapper.Map<Company>(entityCreateDto);
 
@@ -71,7 +73,7 @@ namespace Application.Services.EntityServices
         {
             string entityTypeName = typeof(Company).Name.ToUpper();
             if (!await _permissionService.Check($"{OperationType.UPDATE}_{entityTypeName}"))
-                throw new UnauthorizedAccessException("You do not have permission to create this entity.");
+                throw new ForbiddenException("You do not have permission to create this entity.");
 
             var entity = await _repository.GetAsync(x => x.Id == entityUpdateDto.Id, cancellationToken)
                                 ?? throw new KeyNotFoundException("Entity not found");
@@ -108,7 +110,7 @@ namespace Application.Services.EntityServices
         {
             string entityTypeName = typeof(Company).Name.ToUpper();
             if (!await _permissionService.Check($"{OperationType.DELETE}_{entityTypeName}"))
-                throw new UnauthorizedAccessException("You do not have permission to create this entity.");
+                throw new ForbiddenException("You do not have permission to create this entity.");
 
             var entity = await _repository.GetAsync(x => x.Id == id, cancellationToken)
                                 ?? throw new KeyNotFoundException("Entity not found");
@@ -116,7 +118,7 @@ namespace Application.Services.EntityServices
             await _repository.DeleteAsync(entity, cancellationToken);
 
             if (entity.LogoFileId == null)
-                return ResponseModel<bool>.Ok();
+                return ResponseModel<bool>.Ok(true);
 
             return await _uploadedFileService.DeleteAsync(entity.LogoFileId ?? Guid.Empty, cancellationToken);
         }
@@ -131,7 +133,7 @@ namespace Application.Services.EntityServices
         {
             string entityTypeName = typeof(Company).Name.ToUpper();
             if (!await _permissionService.Check($"{OperationType.READ}_{entityTypeName}"))
-                throw new UnauthorizedAccessException("You do not have permission to create this entity.");
+                throw new ForbiddenException("You do not have permission to create this entity.");
 
             // The logo is loaded with the company: READ_COMPANY is enough, READ_UPLOADEDFILE is not required.
             var entity = await _repository.Query(predicate, cancellationToken)
@@ -145,7 +147,7 @@ namespace Application.Services.EntityServices
         /// <summary>
         /// The site owner's company (the earliest record) for public pages. Open to anonymous visitors.
         /// </summary>
-        public async Task<ResponseModel<CompanyViewModel?>> GetPublicAsync(CancellationToken cancellationToken = default)
+        public async Task<ResponseModel<PublicCompanyViewModel?>> GetPublicAsync(CancellationToken cancellationToken = default)
         {
             var entity = await _repository.Query(cancellationToken: cancellationToken)
                                 .Include(x => x.LogoFile)
@@ -153,7 +155,7 @@ namespace Application.Services.EntityServices
                                 .FirstOrDefaultAsync(cancellationToken)
                                 ?? throw new KeyNotFoundException("Company information has not been filled in yet.");
 
-            return ResponseModel<CompanyViewModel?>.Ok(_mapper.Map<CompanyViewModel>(entity));
+            return ResponseModel<PublicCompanyViewModel?>.Ok(_mapper.Map<PublicCompanyViewModel>(entity));
         }
     }
 }

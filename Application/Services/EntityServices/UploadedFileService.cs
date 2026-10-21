@@ -1,4 +1,5 @@
-﻿using Application.Interfaces.Auths;
+﻿using Application.Exceptions;
+using Application.Interfaces.Auths;
 using Application.Interfaces.EntityServices;
 using Application.Interfaces.Files;
 using Application.Interfaces.Repositories;
@@ -110,7 +111,7 @@ namespace Application.Services.EntityServices
         {
             string entityTypeName = typeof(UploadedFile).Name.ToUpper();
             if (!await _permissionService.Check($"{OperationType.READ}_{entityTypeName}"))
-                throw new UnauthorizedAccessException("You do not have permission to create this entity.");
+                throw new ForbiddenException("You do not have permission to create this entity.");
 
             var entity = await _repository.GetByIdAsync(id, cancellationToken)
                                 ?? throw new KeyNotFoundException("Entity not found");
@@ -122,7 +123,7 @@ namespace Application.Services.EntityServices
         {
             string entityTypeName = typeof(UploadedFile).Name.ToUpper();
             if (!await _permissionService.Check($"{OperationType.READ}_{entityTypeName}"))
-                throw new UnauthorizedAccessException("You do not have permission to create this entity.");
+                throw new ForbiddenException("You do not have permission to create this entity.");
 
             var entity = await _repository.GetAsync(predicate, cancellationToken)
                                 ?? throw new KeyNotFoundException("Entity not found");

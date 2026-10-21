@@ -1,4 +1,5 @@
-﻿using Application.Features.Auths.Commands.Login;
+﻿using Application.Features.Auths.Commands.ChangePassword;
+using Application.Features.Auths.Commands.Login;
 using Application.Features.Auths.Commands.LoginViaEimzo;
 using Application.Features.Auths.Commands.Logout;
 using Application.Features.Auths.Commands.RefreshToken;
@@ -127,6 +128,17 @@ namespace WebApi.Controllers
         [HttpPut("me/email")]
         [Authorize]
         public async Task<IActionResult> ChangeMyEmail([FromBody] ChangeMyEmailCommand command)
+        {
+            var result = await _mediator.Send(command);
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Changes the signed-in user's password (current password required). Other sessions end; the response carries new tokens.
+        /// </summary>
+        [HttpPut("me/password")]
+        [Authorize]
+        public async Task<IActionResult> ChangeMyPassword([FromBody] ChangeMyPasswordCommand command)
         {
             var result = await _mediator.Send(command);
             return Ok(result);

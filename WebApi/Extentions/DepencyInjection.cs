@@ -29,8 +29,20 @@ namespace WebApi.Extentions
             builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
             builder.Services.AddProblemDetails();
             builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddControllers();
+            builder.Services.AddControllers()
+                // Validation errors in the same ResponseModel shape as every other error, not ProblemDetails.
+                .ConfigureApiBehaviorOptions(options => options.InvalidModelStateResponseFactory = context =>
+                {
+                    var errors = context.ModelState
+                        .Where(entry => entry.Value?.Errors.Count > 0)
+                        .SelectMany(entry => entry.Value!.Errors.Select(error =>
+                            $"{entry.Key}: {(string.IsNullOrEmpty(error.ErrorMessage) ? "The value is not valid." : error.ErrorMessage)}"))
+                        .ToList();
+                    return new Microsoft.AspNetCore.Mvc.BadRequestObjectResult(Application.Models.Results.ResponseModel<object>.Fail(
+                        "One or more validation errors occurred.", errors, System.Net.HttpStatusCode.BadRequest));
+                });
             builder.Services.AddOpenApi();
+            builder.AddUploadSizeLimits();
         }
 
         /// <summary>
@@ -86,6 +98,18 @@ namespace WebApi.Extentions
             });
 
             return services;
+        }
+
+        /// <summary>
+        /// Request body limits follow FileStorage:MaxFileSizeMb (+5 MB for the other form fields). Kestrel's own default
+        /// (~28.6 MB) and the form reader's (128 MB) would otherwise decide instead, and a larger configured size would
+        /// fail before FileService could give its message. Keep Nginx client_max_body_size in step.
+        /// </summary>
+        private static void AddUploadSizeLimits(this WebApplicationBuilder builder)
+        {
+            var maxBodyBytes = (builder.Configuration.GetValue("FileStorage:MaxFileSizeMb", 20) + 5) * 1024L * 1024L;
+            builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = maxBodyBytes);
+            builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options => options.MultipartBodyLengthLimit = maxBodyBytes);
         }
 
         /// <summary>

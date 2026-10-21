@@ -48,16 +48,16 @@ namespace Domain.Entities
         public string PhoneNumber { get; set; } = string.Empty;
 
         /// <summary>
-        /// Qo'shimcha aloqa telefoni.
+        /// Qo'shimcha aloqa telefoni (ixtiyoriy).
         /// </summary>
         [PhoneNumberValidation]
-        public string PhoneNumber2 { get; set; } = string.Empty;
+        public string? PhoneNumber2 { get; set; }
 
         /// <summary>
-        /// Kompaniyaning aloqa uchun elektron pochtasi.
+        /// Kompaniyaning aloqa uchun elektron pochtasi (ixtiyoriy).
         /// </summary>
-        [PhoneNumberValidation]
-        public string Email { get; set; } = string.Empty;
+        [EmailAddress]
+        public string? Email { get; set; }
 
         /// <summary>
         /// Kompaniya logotipi faylining Id'si (FK, ixtiyoriy).

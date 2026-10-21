@@ -1,4 +1,5 @@
-﻿using Domain.Constants;
+﻿using Application.Exceptions;
+using Domain.Constants;
 using Application.Authorization;
 using Application.Interfaces.Auths;
 using Application.Interfaces.EntityServices;
@@ -49,7 +50,7 @@ namespace Application.Services.EntityServices
         {
             string entityTypeName = typeof(User).Name.ToUpper();
             if (!await _permissionService.Check($"{OperationType.DELETE}_{entityTypeName}"))
-                throw new UnauthorizedAccessException("You do not have permission to delete this entity.");
+                throw new ForbiddenException("You do not have permission to delete this entity.");
 
             var target = await _repository.GetAsync(x => x.Id == id, cancellationToken)
                                 ?? throw new KeyNotFoundException("Entity not found");
@@ -70,7 +71,7 @@ namespace Application.Services.EntityServices
         public async Task<ResponseModel<UserViewModel>> AssignRoleAsync(Guid userId, Guid userRoleId, CancellationToken cancellationToken = default)
         {
             if (!await _permissionService.Check(nameof(Domain.Enums.Actions.UserRoleActions.ASSIGN_USERROLE)))
-                throw new UnauthorizedAccessException("You do not have permission to assign roles.");
+                throw new ForbiddenException("You do not have permission to assign roles.");
 
             var target = await _repository.GetAsync(x => x.Id == userId, cancellationToken)
                                 ?? throw new KeyNotFoundException("User not found");
@@ -79,19 +80,26 @@ namespace Application.Services.EntityServices
 
             await _accessGuard.EnsureCanAssignRoleAsync(target, userRoleId, cancellationToken);
 
-            target.UserRoleId = userRoleId;
-            var result = await _repository.UpdateAsync(target, cancellationToken);
-            return ResponseModel<UserViewModel>.Ok(_mapper.Map<UserViewModel>(result));
+            return await _unitOfWork.ExecuteAsync(async () =>
+            {
+                // Shared lock: a delete of this role waits until the user has it (and then refuses with 409).
+                if (!await _userRoleRepository.LockAsync(userRoleId, exclusive: false, cancellationToken))
+                    throw new KeyNotFoundException("Role not found");
+
+                target.UserRoleId = userRoleId;
+                var result = await _repository.UpdateAsync(target, cancellationToken);
+                return ResponseModel<UserViewModel>.Ok(_mapper.Map<UserViewModel>(result));
+            }, cancellationToken);
         }
 
         public override async Task<ResponseModel<UserViewModel>> CreateAsync(CreateUserDto entityCreateDto, CancellationToken cancellationToken = default)
         {
             string entityTypeName = typeof(User).Name.ToUpper();
             if (!await _permissionService.Check($"{OperationType.CREATE}_{entityTypeName}"))
-                throw new UnauthorizedAccessException("You do not have permission to create this entity.");
+                throw new ForbiddenException("You do not have permission to create this entity.");
 
             if (await _userRepository.ExistsWithAnyAsync(entityCreateDto.Login, entityCreateDto.Email, entityCreateDto.INNPINFL, entityCreateDto.Phone, cancellationToken: cancellationToken))
-                throw new InvalidOperationException("User with this login, email, INNPINFL or phone already exists.");
+                throw new ConflictException("User with this login, email, INNPINFL or phone already exists.");
 
             if (!string.IsNullOrWhiteSpace(entityCreateDto.INNPINFL))
                 await _accessGuard.EnsureCanSetIdentifierAsync(cancellationToken);
@@ -111,39 +119,74 @@ namespace Application.Services.EntityServices
         {
             string entityTypeName = typeof(User).Name.ToUpper();
             if (!await _permissionService.Check($"{OperationType.UPDATE}_{entityTypeName}"))
-                throw new UnauthorizedAccessException("You do not have permission to update this entity.");
+                throw new ForbiddenException("You do not have permission to update this entity.");
 
             var entity = await _repository.GetAsync(x => x.Id == entityUpdateDto.Id, cancellationToken)
                                 ?? throw new KeyNotFoundException("Entity not found");
             await _accessGuard.EnsureCanManageUserAsync(entity, cancellationToken);
 
-            // Changing the PINFL/INN would send someone else's E-IMZO sign-in to this account.
-            if (!string.Equals(entity.INNPINFL ?? "", entityUpdateDto.INNPINFL ?? "", StringComparison.Ordinal))
+            var dto = entityUpdateDto;
+            var unknown = dto.ClearFields.Where(f => !UpdateUserDto.ClearableFields.Contains(f)).ToList();
+            if (unknown.Count > 0)
+                throw new BadRequestException($"ClearFields: '{string.Join("', '", unknown)}' cannot be cleared. Allowed: {string.Join(", ", UpdateUserDto.ClearableFields)}.");
+            bool Clear(string field) => dto.ClearFields.Contains(field, StringComparer.OrdinalIgnoreCase);
+
+            // Changing or removing the PINFL/INN would move someone's E-IMZO sign-in to or away from this account.
+            var newIdentifier = Clear(nameof(UpdateUserDto.INNPINFL)) ? null : dto.INNPINFL ?? entity.INNPINFL;
+            if (!string.Equals(entity.INNPINFL, newIdentifier, StringComparison.Ordinal))
                 await _accessGuard.EnsureCanSetIdentifierAsync(cancellationToken);
 
-            if (await _userRepository.ExistsWithAnyAsync(entityUpdateDto.Login, entityUpdateDto.Email, entityUpdateDto.INNPINFL, entityUpdateDto.Phone, entityUpdateDto.Id, cancellationToken))
-                throw new InvalidOperationException("User with this login, email, INNPINFL or phone already exists.");
+            if (await _userRepository.ExistsWithAnyAsync(dto.Login, dto.Email, dto.INNPINFL, dto.Phone, dto.Id, cancellationToken))
+                throw new ConflictException("User with this login, email, INNPINFL or phone already exists.");
 
             var oldEmail = entity.Email;
-            _mapper.Map(entityUpdateDto, entity);
+            ApplyUpdate(dto, entity, Clear);
 
             // A new address has not been proven to belong to the user.
-            if (!string.Equals(oldEmail?.Trim(), entity.Email?.Trim(), StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(oldEmail, entity.Email, StringComparison.OrdinalIgnoreCase))
                 entity.EmailConfirmedAt = null;
 
             // An empty password means "keep the current one".
-            var passwordChanged = !string.IsNullOrWhiteSpace(entityUpdateDto.Password);
+            var passwordChanged = !string.IsNullOrWhiteSpace(dto.Password);
             if (passwordChanged)
-                entity.PasswordHash = _hashService.Hash(entityUpdateDto.Password!);
+                entity.PasswordHash = _hashService.Hash(dto.Password!);
 
-            var result = await _repository.UpdateAsync(entity, cancellationToken)
-                                ?? throw new InvalidOperationException("Failed to update entity.");
+            // Saving the new password and ending the sessions opened with the old one commit together.
+            return await _unitOfWork.ExecuteAsync(async () =>
+            {
+                var result = await _repository.UpdateAsync(entity, cancellationToken)
+                                    ?? throw new InvalidOperationException("Failed to update entity.");
+                if (passwordChanged)
+                    await _refreshTokenRepository.RevokeAllActiveAsync(entity.Id, DateTime.UtcNow, cancellationToken);
 
-            // Sessions opened with the old password end with it.
-            if (passwordChanged)
-                await _refreshTokenRepository.RevokeAllActiveAsync(entity.Id, DateTime.UtcNow, cancellationToken);
+                return ResponseModel<UserViewModel>.Ok(_mapper.Map<UserViewModel>(result));
+            }, cancellationToken);
+        }
 
-            return ResponseModel<UserViewModel>.Ok(_mapper.Map<UserViewModel>(result));
+        /// <summary>
+        /// Sent values replace the stored ones; fields not sent stay; <see cref="UpdateUserDto.ClearFields"/> removes.
+        /// </summary>
+        private static void ApplyUpdate(UpdateUserDto dto, User entity, Func<string, bool> clear)
+        {
+            if (dto.Type != null)
+                entity.Type = dto.Type.Value;
+
+            if (!string.IsNullOrWhiteSpace(dto.FullName))
+                entity.FullName = dto.FullName.Trim();
+            else if (dto.FirstName != null || dto.LastName != null || dto.MiddleName != null)
+            {
+                if (string.IsNullOrWhiteSpace(dto.FirstName) || string.IsNullOrWhiteSpace(dto.LastName))
+                    throw new BadRequestException("To change the name from its parts send both LastName and FirstName, or send FullName.");
+                entity.FullName = Mappings.UserMappingProfile.BuildFullName(dto.LastName, dto.FirstName, dto.MiddleName);
+            }
+
+            entity.Login = clear(nameof(dto.Login)) ? null : dto.Login ?? entity.Login;
+            entity.LegalName = clear(nameof(dto.LegalName)) ? null : dto.LegalName ?? entity.LegalName;
+            entity.INNPINFL = clear(nameof(dto.INNPINFL)) ? null : dto.INNPINFL ?? entity.INNPINFL;
+            entity.Phone = clear(nameof(dto.Phone)) ? null : dto.Phone ?? entity.Phone;
+            entity.SecondaryPhone = clear(nameof(dto.SecondaryPhone)) ? null : dto.SecondaryPhone ?? entity.SecondaryPhone;
+            entity.Address = clear(nameof(dto.Address)) ? null : dto.Address ?? entity.Address;
+            entity.Email = clear(nameof(dto.Email)) ? null : dto.Email ?? entity.Email;
         }
 
         /// <summary>

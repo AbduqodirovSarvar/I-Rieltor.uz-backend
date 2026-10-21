@@ -1,4 +1,5 @@
-﻿using Application.Authorization;
+﻿using Application.Exceptions;
+using Application.Authorization;
 using Application.Interfaces.Auths;
 using Application.Interfaces.EntityServices;
 using Application.Interfaces.Repositories;
@@ -25,10 +26,10 @@ namespace Persistance.Services.Auths
                         ?? throw new UnauthorizedAccessException("You don't have access for this action!");
 
             if(user.UserRoleId == null)
-                throw new UnauthorizedAccessException("You don't have access for this action!");
+                throw new ForbiddenException("You don't have access for this action!");
 
             var role = await _userRoleRepository.GetByIdAsync(user.UserRoleId.Value)
-                        ?? throw new UnauthorizedAccessException("You don't have access for this action!");
+                        ?? throw new ForbiddenException("You don't have access for this action!");
 
             var result = await _userRolePermissionRepository.AnyAsync(x => x.UserRoleId == user.UserRoleId && x.Permission == permission);
             return result;
@@ -40,10 +41,10 @@ namespace Persistance.Services.Auths
                         ?? throw new UnauthorizedAccessException("You don't have access for this action!");
 
             if (user.UserRoleId == null)
-                throw new UnauthorizedAccessException("You don't have access for this action!");
+                throw new ForbiddenException("You don't have access for this action!");
 
             var role = await _userRoleRepository.GetByIdAsync(user.UserRoleId.Value)
-                        ?? throw new UnauthorizedAccessException("You don't have access for this action!");
+                        ?? throw new ForbiddenException("You don't have access for this action!");
 
             var result = await _userRolePermissionRepository.AnyAsync(x => x.UserRoleId == user.UserRoleId && x.Permission == permission);
             return result;

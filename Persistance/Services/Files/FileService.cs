@@ -1,4 +1,5 @@
-﻿using Application.Interfaces.Files;
+﻿using Application.Exceptions;
+using Application.Interfaces.Files;
 using Domain.Entities;
 using Domain.Enums;
 using Microsoft.AspNetCore.Http;
@@ -46,20 +47,20 @@ namespace Persistance.Services.Files
         public async Task<UploadedFile> SaveFileAsync(IFormFile file, string category = "default")
         {
             if (file == null || file.Length == 0)
-                throw new ArgumentException("File is empty");
+                throw new BadRequestException("File is empty");
 
             if (file.Length > _maxFileSizeBytes)
-                throw new ArgumentException($"File is larger than {_maxFileSizeBytes / (1024 * 1024)} MB.");
+                throw new BadRequestException($"File is larger than {_maxFileSizeBytes / (1024 * 1024)} MB.");
 
             // Only types that the static file middleware is allowed to serve may be stored.
             var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
             var mimeType = GetMimeType(extension);
             if (mimeType == FileMimeType.Unknown)
-                throw new ArgumentException($"File type '{extension}' is not allowed.");
+                throw new BadRequestException($"File type '{extension}' is not allowed.");
 
             // The extension comes from the client, so the content must match it too.
             if (!await HasExpectedSignatureAsync(file, mimeType))
-                throw new ArgumentException($"File content does not match the '{extension}' type.");
+                throw new BadRequestException($"File content does not match the '{extension}' type.");
 
             var uploadPath = GetUploadPath(category);
             if (!Directory.Exists(uploadPath))
@@ -68,9 +69,17 @@ namespace Persistance.Services.Files
             var uniqueName = $"{Guid.NewGuid()}{extension}";
             var filePath = Path.Combine(uploadPath, uniqueName);
 
-            using (var stream = new FileStream(filePath, FileMode.Create))
+            try
             {
+                using var stream = new FileStream(filePath, FileMode.Create);
                 await file.CopyToAsync(stream);
+            }
+            catch
+            {
+                // A broken upload (client gone, disk full) must not leave a half-written file behind.
+                if (File.Exists(filePath))
+                    File.Delete(filePath);
+                throw;
             }
 
             var relativePath = category != null ? $"/uploads/{category}/{uniqueName}" : $"/uploads/{uniqueName}";
@@ -105,6 +114,9 @@ namespace Persistance.Services.Files
             File.Move(sourcePath, destinationPath);
             await Task.CompletedTask;
         }
+
+        public string GetPublicUrl(string path)
+            => string.IsNullOrEmpty(path) ? string.Empty : $"{_publicBaseUrl}{path}";
 
         public Task DiscardFileAsync(string fileName, string category = "default")
         {

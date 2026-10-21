@@ -87,7 +87,7 @@ namespace Persistance.Services.Auths
             var status = GetStatus(root);
             var timestamped = GetString(root, "pkcs7b64");
             if (status != SuccessStatus || string.IsNullOrEmpty(timestamped))
-                throw new ArgumentException($"The document could not be timestamped: {DescribeStatus(status, GetString(root, "message"))}");
+                throw new BadRequestException($"The document could not be timestamped: {DescribeStatus(status, GetString(root, "message"))}");
 
             return timestamped;
         }
@@ -181,7 +181,7 @@ namespace Persistance.Services.Auths
                 {
                     // HTTP 400 is E-IMZO-SERVER's answer to malformed input (for example a broken Base64 signature).
                     if (response.StatusCode == HttpStatusCode.BadRequest)
-                        throw new ArgumentException("The signed data is not valid.", ex);
+                        throw new BadRequestException("The signed data is not valid.");
 
                     throw Unavailable("E-IMZO-SERVER returned an unreadable response.", ex);
                 }

@@ -1,4 +1,5 @@
-﻿using Application.Authorization;
+﻿using Application.Exceptions;
+using Application.Authorization;
 using Application.Interfaces.Auths;
 using Application.Interfaces.EntityServices;
 using Application.Interfaces.Repositories;
@@ -39,10 +40,10 @@ namespace Application.Services.EntityServices
         {
             string entityTypeName = typeof(UserRolePermission).Name.ToUpper();
             if (!await _permissionService.Check($"{OperationType.CREATE}_{entityTypeName}"))
-                throw new UnauthorizedAccessException("You do not have permission to create this entity.");
+                throw new ForbiddenException("You do not have permission to create this entity.");
 
             if (!PermissionCatalog.Exists(entityCreateDto.Permission))
-                throw new ArgumentException($"Unknown permission '{entityCreateDto.Permission}'. See GET api/UserRolePermission/all-permissions.");
+                throw new BadRequestException($"Unknown permission '{entityCreateDto.Permission}'. See GET api/UserRolePermission/all-permissions.");
 
             if (!await _userRoleRepository.AnyAsync(x => x.Id == entityCreateDto.UserRoleId, cancellationToken))
                 throw new KeyNotFoundException("Role not found");
@@ -62,7 +63,7 @@ namespace Application.Services.EntityServices
         {
             string entityTypeName = typeof(UserRolePermission).Name.ToUpper();
             if (!await _permissionService.Check($"{OperationType.DELETE}_{entityTypeName}"))
-                throw new UnauthorizedAccessException("You do not have permission to delete this entity.");
+                throw new ForbiddenException("You do not have permission to delete this entity.");
 
             var entity = await _repository.GetAsync(x => x.Id == id, cancellationToken)
                                 ?? throw new KeyNotFoundException("Entity not found");

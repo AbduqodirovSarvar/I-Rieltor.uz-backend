@@ -44,7 +44,6 @@ namespace Persistance.Data.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("Email")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<bool>("IsDeleted")
@@ -75,7 +74,6 @@ namespace Persistance.Data.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("PhoneNumber2")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<DateTime?>("UpdatedAt")

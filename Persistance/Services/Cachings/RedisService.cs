@@ -47,12 +47,35 @@ namespace Persistance.Services.Cachings
                 if (value.IsNullOrEmpty)
                     return default;
 
-                return JsonSerializer.Deserialize<T>(value.ToString(), JsonOptions);
+                try
+                {
+                    return JsonSerializer.Deserialize<T>(value.ToString(), JsonOptions);
+                }
+                catch (Exception ex) when (ex is JsonException or NotSupportedException)
+                {
+                    // Written by an older version of the type (after a deploy): drop it and read from the database.
+                    _logger.LogWarning(ex, "Cached value {Key} could not be read and was removed", key);
+                    await RemoveAsync(key);
+                    return default;
+                }
             }
             catch (Exception ex) when (ex is RedisException or TimeoutException)
             {
                 _logger.LogWarning(ex, "Redis is unavailable, GET {Key} skipped", key);
                 return default;
+            }
+        }
+
+        public async Task SetIfNotExistsAsync<T>(string key, T value, TimeSpan? expiry = null)
+        {
+            try
+            {
+                var json = JsonSerializer.Serialize(value, JsonOptions);
+                await _database.StringSetAsync(key, json, expiry, When.NotExists);
+            }
+            catch (Exception ex) when (ex is RedisException or TimeoutException)
+            {
+                _logger.LogWarning(ex, "Redis is unavailable, SET NX {Key} skipped", key);
             }
         }
 

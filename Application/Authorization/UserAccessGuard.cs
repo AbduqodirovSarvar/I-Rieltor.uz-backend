@@ -1,3 +1,4 @@
+using Application.Exceptions;
 using Application.Interfaces.Auths;
 using Application.Interfaces.Repositories;
 using Domain.Constants;
@@ -7,7 +8,7 @@ namespace Application.Authorization
 {
     /// <summary>
     /// "Nobody manages someone more powerful than themselves." The CRUD permission (UPDATE_USER, ...) says what kind of
-    /// change a caller may make; this guard says on whom. Every refusal is an <see cref="UnauthorizedAccessException"/> (403).
+    /// change a caller may make; this guard says on whom. Every refusal is a <see cref="Application.Exceptions.ForbiddenException"/> (403).
     /// SUPER_ADMIN passes every check; its own role and the last SUPER_ADMIN user are protected even from SUPER_ADMIN.
     /// </summary>
     public interface IUserAccessGuard
@@ -46,65 +47,65 @@ namespace Application.Authorization
 
             if (await IsSuperAdminRoleAsync(target.UserRoleId, cancellationToken)
                 || !(await GetRolePermissionsAsync(target.UserRoleId, cancellationToken)).IsSubsetOf(caller.Permissions))
-                throw new UnauthorizedAccessException(Refused);
+                throw new ForbiddenException(Refused);
         }
 
         public async Task EnsureCanDeleteUserAsync(User target, CancellationToken cancellationToken = default)
         {
             var caller = await GetCallerAsync(cancellationToken);
             if (target.Id == caller.UserId)
-                throw new UnauthorizedAccessException("You cannot delete your own account here.");
+                throw new ForbiddenException("You cannot delete your own account here.");
 
             await EnsureCanManageUserAsync(target, cancellationToken);
 
             if (await IsSuperAdminRoleAsync(target.UserRoleId, cancellationToken)
                 && !await userRepository.AnyAsync(u => u.Id != target.Id && u.UserRoleId == target.UserRoleId, cancellationToken))
-                throw new UnauthorizedAccessException("The last SUPER_ADMIN cannot be deleted.");
+                throw new ForbiddenException("The last SUPER_ADMIN cannot be deleted.");
         }
 
         public async Task EnsureCanAssignRoleAsync(User target, Guid roleId, CancellationToken cancellationToken = default)
         {
             var caller = await GetCallerAsync(cancellationToken);
             if (target.Id == caller.UserId)
-                throw new UnauthorizedAccessException("You cannot change your own role.");
+                throw new ForbiddenException("You cannot change your own role.");
 
             await EnsureCanManageUserAsync(target, cancellationToken);
 
             // Taking SUPER_ADMIN away from its last holder would leave nobody able to manage the system.
             if (await IsSuperAdminRoleAsync(target.UserRoleId, cancellationToken) && target.UserRoleId != roleId
                 && !await userRepository.AnyAsync(u => u.Id != target.Id && u.UserRoleId == target.UserRoleId, cancellationToken))
-                throw new UnauthorizedAccessException("The last SUPER_ADMIN cannot lose the role.");
+                throw new ForbiddenException("The last SUPER_ADMIN cannot lose the role.");
 
             if (caller.IsSuperAdmin)
                 return;
 
             if (await IsSuperAdminRoleAsync(roleId, cancellationToken)
                 || !(await GetRolePermissionsAsync(roleId, cancellationToken)).IsSubsetOf(caller.Permissions))
-                throw new UnauthorizedAccessException(Refused);
+                throw new ForbiddenException(Refused);
         }
 
         public async Task EnsureCanChangeRolePermissionAsync(Guid roleId, string permission, CancellationToken cancellationToken = default)
         {
             // SUPER_ADMIN holds every permission by definition; the seeder would put a removed one back anyway.
             if (await IsSuperAdminRoleAsync(roleId, cancellationToken))
-                throw new UnauthorizedAccessException("The permissions of SUPER_ADMIN cannot be changed.");
+                throw new ForbiddenException("The permissions of SUPER_ADMIN cannot be changed.");
 
             var caller = await GetCallerAsync(cancellationToken);
             if (caller.IsSuperAdmin)
                 return;
 
             if (caller.RoleId == roleId)
-                throw new UnauthorizedAccessException("You cannot change the permissions of your own role.");
+                throw new ForbiddenException("You cannot change the permissions of your own role.");
 
             if (!caller.Permissions.Contains(permission)
                 || !(await GetRolePermissionsAsync(roleId, cancellationToken)).IsSubsetOf(caller.Permissions))
-                throw new UnauthorizedAccessException(Refused);
+                throw new ForbiddenException(Refused);
         }
 
         public async Task EnsureCanSetIdentifierAsync(CancellationToken cancellationToken = default)
         {
             if (!(await GetCallerAsync(cancellationToken)).IsSuperAdmin)
-                throw new UnauthorizedAccessException("Only SUPER_ADMIN can set a PINFL/INN; it normally comes from the E-IMZO certificate.");
+                throw new ForbiddenException("Only SUPER_ADMIN can set a PINFL/INN; it normally comes from the E-IMZO certificate.");
         }
 
         private sealed record Caller(Guid UserId, Guid? RoleId, bool IsSuperAdmin, HashSet<string> Permissions);

@@ -15,5 +15,7 @@ namespace Application.Interfaces.Files
         Task DeleteFileAsync(string fileName, string category = "default");
         /// <summary>Removes for good a file whose database record was never committed.</summary>
         Task DiscardFileAsync(string fileName, string category = "default");
+        /// <summary>Public address of a stored file: FileStorage:PublicBaseUrl + its Path (/uploads/...).</summary>
+        string GetPublicUrl(string path);
     }
 }

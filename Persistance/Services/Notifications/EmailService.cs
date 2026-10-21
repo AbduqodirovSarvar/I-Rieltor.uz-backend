@@ -30,7 +30,7 @@ namespace Persistance.Services.Notifications
             }
             catch (FormatException)
             {
-                throw new ArgumentException("Email address is not valid.");
+                throw new BadRequestException("Email address is not valid.");
             }
 
             using var message = new MailMessage

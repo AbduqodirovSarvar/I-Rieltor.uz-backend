@@ -14,7 +14,8 @@ namespace Application.Mappings
     {
         public UploadedFileMappingProfile() 
         {
-            CreateMap<UploadedFile, UploadedFileViewModel>().ReverseMap();
+            CreateMap<UploadedFile, UploadedFileViewModel>()
+                .ForMember(d => d.Url, o => o.MapFrom<FileUrlResolver, string>(s => s.Path));
             CreateMap<UpdateUploadedFileDto, UploadedFile>().ReverseMap();
         }
     }

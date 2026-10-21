@@ -39,7 +39,8 @@ namespace Persistance.Services.Repositories.Abstractions
         /// <summary>
         /// Prefixed with the entity type so different tables never share a key.
         /// </summary>
-        protected static string CacheKey(Guid id) => $"{typeof(TEntity).Name.ToLowerInvariant()}:{id}";
+        /// <remarks>"v1": bump it when cached types change incompatibly, so old entries are simply never read.</remarks>
+        protected static string CacheKey(Guid id) => $"v1:{typeof(TEntity).Name.ToLowerInvariant()}:{id}";
 
         // Inside a transaction the cache is touched only after commit, so a rolled-back row never reaches it.
         private Task CacheAfterCommitAsync(TEntity entity)
@@ -90,8 +91,10 @@ namespace Persistance.Services.Repositories.Abstractions
                 return result;
 
             result = await _dbSet.AsNoTracking().FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
-            if (result != null)
-                await _redisService.SetAsync(CacheKey(id), result, CacheTtl);
+            // Inside a transaction the row may be uncommitted (and could roll back), so it is not cached.
+            // Otherwise "only if absent": a writer that committed meanwhile has already cached the newer row.
+            if (result != null && _context.Database.CurrentTransaction == null)
+                await _redisService.SetIfNotExistsAsync(CacheKey(id), result, CacheTtl);
             return result;
         }
 

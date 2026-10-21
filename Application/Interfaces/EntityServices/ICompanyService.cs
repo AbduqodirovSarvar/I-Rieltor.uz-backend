@@ -1,4 +1,5 @@
-﻿using Application.Interfaces.EntityServices.Abstractions;
+﻿using Application.Models.ViewModels.Public;
+using Application.Interfaces.EntityServices.Abstractions;
 using Application.Models.Dtos.Companies;
 using Application.Models.Results;
 using Application.Models.ViewModels.Companies;
@@ -20,6 +21,6 @@ namespace Application.Interfaces.EntityServices
         /// <summary>
         /// The site owner's company for the "About" and "Contacts" pages; no permission required.
         /// </summary>
-        Task<ResponseModel<CompanyViewModel?>> GetPublicAsync(CancellationToken cancellationToken = default);
+        Task<ResponseModel<PublicCompanyViewModel?>> GetPublicAsync(CancellationToken cancellationToken = default);
     }
 }

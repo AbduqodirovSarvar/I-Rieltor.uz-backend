@@ -1,4 +1,5 @@
-﻿using Application.Interfaces.EntityServices.Abstractions;
+﻿using Application.Models.ViewModels.Public;
+using Application.Interfaces.EntityServices.Abstractions;
 using Application.Models.Dtos.Slides;
 using Application.Models.Results;
 using Application.Models.ViewModels.Slides;
@@ -20,6 +21,6 @@ namespace Application.Interfaces.EntityServices
         /// <summary>
         /// Slides for the home page carousel, in display order; no permission required.
         /// </summary>
-        Task<ResponseModel<List<SlideViewModel>>> GetPublicListAsync(CancellationToken cancellationToken = default);
+        Task<ResponseModel<List<PublicSlideViewModel>>> GetPublicListAsync(CancellationToken cancellationToken = default);
     }
 }

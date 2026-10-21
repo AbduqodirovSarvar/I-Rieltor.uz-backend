@@ -1,5 +1,6 @@
 ﻿using Application.Exceptions;
 using Application.Interfaces.Auths;
+using Application.Interfaces.Cachings;
 using Application.Interfaces.EntityServices;
 using Application.Interfaces.Notifications;
 using Application.Interfaces.Repositories;
@@ -32,7 +33,8 @@ namespace Application.Services.Auths
         IRefreshTokenRepository refreshTokenRepository,
         ICurrentUserService currentUserService,
         IEmailConfirmationTokenService emailConfirmationTokenService,
-        IUnitOfWork unitOfWork
+        IUnitOfWork unitOfWork,
+        IRedisService redisService
         ) : IAuthService
     {
         private const string InvalidCredentialsMessage = "Invalid login or password.";
@@ -56,6 +58,12 @@ namespace Application.Services.Auths
         private readonly ICurrentUserService _currentUserService = currentUserService;
         private readonly IEmailConfirmationTokenService _emailConfirmationTokenService = emailConfirmationTokenService;
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
+        private readonly IRedisService _redisService = redisService;
+
+        // Per user, on top of the per-IP rate limit: anyone signed in could otherwise mail any address through our
+        // sender and use up its daily quota (Gmail ~500/day), so real confirmation emails would stop going out.
+        private static readonly TimeSpan ConfirmationEmailCooldown = TimeSpan.FromSeconds(60);
+        private const int ConfirmationEmailsPerDay = 10;
         public async Task<TokenViewModel> LoginAsync(LoginDto loginDto, CancellationToken cancellationToken)
         {
             var identifier = loginDto.Login.Trim();
@@ -86,10 +94,12 @@ namespace Application.Services.Auths
         {
             if (await _userRepository.ExistsWithAnyAsync(registerDto.Login, registerDto.Email, null, registerDto.Phone, cancellationToken: cancellationToken))
             {
-                throw new InvalidOperationException("User with this login, email or phone already exists.");
+                throw new ConflictException("User with this login, email or phone already exists.");
             }
 
             var user = _mapper.Map<User>(registerDto);
+            // Unverified identity: only an E-IMZO certificate may make an account INDIVIDUAL or LEGAL.
+            user.Type = ClientType.NONE;
             user.PasswordHash = _hashService.Hash(registerDto.Password);
             user.UserRoleId = await GetDefaultRoleIdAsync(cancellationToken);
 
@@ -192,7 +202,7 @@ namespace Application.Services.Auths
             var identifier = GetEimzoAccountIdentifier(certificate);
 
             if (await _userRepository.ExistsWithAnyAsync(null, null, identifier, null, cancellationToken: cancellationToken))
-                throw new InvalidOperationException("User already registered.");
+                throw new ConflictException("User already registered.");
 
             var personName = string.Join(' ', new[] { certificate.LastName, certificate.FirstName }.Where(x => !string.IsNullOrWhiteSpace(x)));
             if (string.IsNullOrWhiteSpace(personName))
@@ -317,11 +327,15 @@ namespace Application.Services.Auths
                             ?? throw new KeyNotFoundException("User not registered.");
 
             user.PasswordHash = _hashService.Hash(resetPasswordDto.NewPassword);
-            var updated = await _userRepository.UpdateAsync(user, cancellationToken) != null;
 
-            // Whoever knew the old password must not stay signed in.
-            await _refreshTokenRepository.RevokeAllActiveAsync(user.Id, DateTime.UtcNow, cancellationToken);
-            return updated;
+            // The new password and the end of the old sessions commit together: never one without the other.
+            return await _unitOfWork.ExecuteAsync(async () =>
+            {
+                var updated = await _userRepository.UpdateAsync(user, cancellationToken) != null;
+                // Whoever knew the old password must not stay signed in.
+                await _refreshTokenRepository.RevokeAllActiveAsync(user.Id, DateTime.UtcNow, cancellationToken);
+                return updated;
+            }, cancellationToken);
         }
 
         /// <summary>
@@ -337,7 +351,7 @@ namespace Application.Services.Auths
                 if (string.Equals(user.Email, email, StringComparison.OrdinalIgnoreCase))
                 {
                     if (user.EmailConfirmedAt != null)
-                        throw new InvalidOperationException("This email is already confirmed.");
+                        throw new BadRequestException("This email is already confirmed.");
                 }
                 else
                 {
@@ -350,18 +364,53 @@ namespace Application.Services.Auths
                     await _userRepository.UpdateAsync(user, cancellationToken);
                 }
 
+                await EnsureConfirmationEmailAllowedAsync(user.Id, user.Email!);
                 await SendConfirmationLinkAsync(user, cancellationToken);
                 return true;
             }, cancellationToken);
+
+        /// <summary>
+        /// Needs the current password, so a stolen access token alone cannot take the account over. An account without
+        /// a password (E-IMZO only) sets one with reset-password-via-eimzo instead, which proves the person by signature.
+        /// All sessions end, the caller receives a new token pair.
+        /// </summary>
+        public async Task<TokenViewModel> ChangeMyPasswordAsync(string currentPassword, string newPassword, CancellationToken cancellationToken)
+        {
+            var signedIn = await GetSignedInUserAsync(cancellationToken);
+            if (string.IsNullOrEmpty(signedIn.PasswordHash))
+                throw new BadRequestException("This account has no password yet. Set one with reset-password-via-eimzo.");
+            if (!_hashService.Verify(currentPassword, signedIn.PasswordHash))
+                throw new BadRequestException("The current password is incorrect.");
+            if (_hashService.Verify(newPassword, signedIn.PasswordHash))
+                throw new BadRequestException("The new password must differ from the current one.");
+
+            // Only for the claims of the new access token. It is not saved: Update() on it would also write the
+            // attached role and permission rows.
+            var withPermissions = await _userRepository
+                                .Query(x => x.Id == signedIn.Id, cancellationToken)
+                                .Include(x => x.UserRole)
+                                    .ThenInclude(x => x!.Permissions)
+                                .FirstAsync(cancellationToken);
+
+            return await _unitOfWork.ExecuteAsync(async () =>
+            {
+                signedIn.PasswordHash = _hashService.Hash(newPassword);
+                await _userRepository.UpdateAsync(signedIn, cancellationToken);
+                // Whoever knew the old password, on any device, is signed out; this device continues with new tokens.
+                await _refreshTokenRepository.RevokeAllActiveAsync(signedIn.Id, DateTime.UtcNow, cancellationToken);
+                return await IssueTokensAsync(withPermissions, cancellationToken);
+            }, cancellationToken);
+        }
 
         public async Task<bool> ResendEmailConfirmationAsync(CancellationToken cancellationToken)
         {
             var user = await GetSignedInUserAsync(cancellationToken);
             if (string.IsNullOrWhiteSpace(user.Email))
-                throw new InvalidOperationException("No email is set. Add one in the profile settings.");
+                throw new BadRequestException("No email is set. Add one in the profile settings.");
             if (user.EmailConfirmedAt != null)
-                throw new InvalidOperationException("This email is already confirmed.");
+                throw new BadRequestException("This email is already confirmed.");
 
+            await EnsureConfirmationEmailAllowedAsync(user.Id, user.Email!);
             await SendConfirmationLinkAsync(user, cancellationToken);
             return true;
         }
@@ -372,11 +421,11 @@ namespace Application.Services.Auths
         public async Task<bool> ConfirmEmailAsync(string token, CancellationToken cancellationToken)
         {
             if (!_emailConfirmationTokenService.TryValidate(token, out var userId, out var email))
-                throw new ArgumentException(InvalidConfirmationLinkMessage);
+                throw new BadRequestException(InvalidConfirmationLinkMessage);
 
             var user = await _userRepository.GetAsync(x => x.Id == userId, cancellationToken);
             if (user?.Email == null || !string.Equals(user.Email.Trim(), email, StringComparison.OrdinalIgnoreCase))
-                throw new ArgumentException(InvalidConfirmationLinkMessage);
+                throw new BadRequestException(InvalidConfirmationLinkMessage);
 
             if (user.EmailConfirmedAt == null)
             {
@@ -406,6 +455,30 @@ namespace Application.Services.Auths
                 ["hours"] = hours.ToString()
             });
             await _emailService.SendEmailAsync(user.Email!, EmailTemplates.EmailConfirmationSubject, body, cancellationToken);
+            await RecordConfirmationEmailSentAsync(user.Id, user.Email!);
+        }
+
+        // Cooldown per address: right after sign-up (link already sent) a mistyped address can still be corrected at once.
+        // The daily cap is per user, so cycling through addresses to mail strangers stays limited.
+        private static string CooldownKey(Guid userId, string email) => $"v1:emailconfirm:cooldown:{userId}:{email.Trim().ToLowerInvariant()}";
+        private static string DailyKey(Guid userId) => $"v1:emailconfirm:day:{userId}:{DateTime.UtcNow:yyyyMMdd}";
+
+        /// <summary>
+        /// The counters live in Redis; when Redis is down they read as zero and only the per-IP limit applies.
+        /// </summary>
+        private async Task EnsureConfirmationEmailAllowedAsync(Guid userId, string email)
+        {
+            if (await _redisService.ExistsAsync(CooldownKey(userId, email)))
+                throw new TooManyRequestsException("A confirmation email was sent less than a minute ago. Wait a little and try again.");
+            if (await _redisService.GetAsync<int>(DailyKey(userId)) >= ConfirmationEmailsPerDay)
+                throw new TooManyRequestsException("Too many confirmation emails today. Try again tomorrow.");
+        }
+
+        private async Task RecordConfirmationEmailSentAsync(Guid userId, string email)
+        {
+            await _redisService.SetAsync(CooldownKey(userId, email), 1, ConfirmationEmailCooldown);
+            var sentToday = await _redisService.GetAsync<int>(DailyKey(userId));
+            await _redisService.SetAsync(DailyKey(userId), sentToday + 1, TimeSpan.FromDays(1));
         }
     }
 }

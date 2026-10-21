@@ -1,4 +1,5 @@
-﻿using Application.Interfaces.Auths;
+﻿using Application.Exceptions;
+using Application.Interfaces.Auths;
 using Application.Interfaces.EntityServices.Abstractions;
 using Application.Interfaces.Repositories.Abstractions;
 using Application.Models.Dtos.Abstractions;
@@ -34,7 +35,7 @@ namespace Application.Services.EntityServices.Abstractions
         {
             string entityTypeName = typeof(TEntity).Name.ToUpper();
             if (!await _permissionService.Check($"{OperationType.CREATE}_{entityTypeName}"))
-                throw new UnauthorizedAccessException("You do not have permission to create this entity.");
+                throw new ForbiddenException("You do not have permission to create this entity.");
 
             var entity = _mapper.Map<TEntity>(entityCreateDto);
 
@@ -48,7 +49,7 @@ namespace Application.Services.EntityServices.Abstractions
         {
             string entityTypeName = typeof(TEntity).Name.ToUpper();
             if (!await _permissionService.Check($"{OperationType.UPDATE}_{entityTypeName}"))
-                throw new UnauthorizedAccessException("You do not have permission to create this entity.");
+                throw new ForbiddenException("You do not have permission to create this entity.");
 
             // Load the stored entity and apply only the DTO fields, so fields the DTO lacks
             // (PasswordHash, CreatedAt, CreatedBy, foreign keys) keep their values.
@@ -66,7 +67,7 @@ namespace Application.Services.EntityServices.Abstractions
         {
             string entityTypeName = typeof(TEntity).Name.ToUpper();
             if (!await _permissionService.Check($"{OperationType.DELETE}_{entityTypeName}"))
-                throw new UnauthorizedAccessException("You do not have permission to create this entity.");
+                throw new ForbiddenException("You do not have permission to create this entity.");
 
             var entity = await _repository.GetAsync(x => x.Id == id, cancellationToken)
                                 ?? throw new KeyNotFoundException("Entity not found");
@@ -78,7 +79,7 @@ namespace Application.Services.EntityServices.Abstractions
         {
             string entityTypeName = typeof(TEntity).Name.ToUpper();
             if (!await _permissionService.Check($"{OperationType.READ}_{entityTypeName}"))
-                throw new UnauthorizedAccessException("You do not have permission to create this entity.");
+                throw new ForbiddenException("You do not have permission to create this entity.");
 
             var entity = await _repository.GetAsync(predicate, cancellationToken);
             return ResponseModel<bool>.Ok(entity != null);
@@ -88,7 +89,7 @@ namespace Application.Services.EntityServices.Abstractions
         {
             string entityTypeName = typeof(TEntity).Name.ToUpper();
             if (!await _permissionService.Check($"{OperationType.READ}_{entityTypeName}"))
-                throw new UnauthorizedAccessException("You do not have permission to create this entity.");
+                throw new ForbiddenException("You do not have permission to create this entity.");
 
             // Without a stable order the database may return pages that overlap or skip rows.
             orderBy ??= q => q.OrderByDescending(x => x.CreatedAt).ThenByDescending(x => x.Id);
@@ -101,7 +102,7 @@ namespace Application.Services.EntityServices.Abstractions
         {
             string entityTypeName = typeof(TEntity).Name.ToUpper();
             if (!await _permissionService.Check($"{OperationType.READ}_{entityTypeName}"))
-                throw new UnauthorizedAccessException("You do not have permission to create this entity.");
+                throw new ForbiddenException("You do not have permission to create this entity.");
 
             var entity = await _repository.GetByIdAsync(id, cancellationToken)
                                 ?? throw new KeyNotFoundException("Entity not found");
@@ -113,7 +114,7 @@ namespace Application.Services.EntityServices.Abstractions
         {
             string entityTypeName = typeof(TEntity).Name.ToUpper();
             if (!await _permissionService.Check($"{OperationType.READ}_{entityTypeName}"))
-                throw new UnauthorizedAccessException("You do not have permission to create this entity.");
+                throw new ForbiddenException("You do not have permission to create this entity.");
 
             var entity = await _repository.GetAsync(predicate, cancellationToken)
                                 ?? throw new KeyNotFoundException("Entity not found");

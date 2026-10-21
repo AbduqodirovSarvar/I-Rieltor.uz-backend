@@ -22,9 +22,9 @@ namespace Application.Models.ViewModels.Companies
         [PhoneNumberValidation]
         public string PhoneNumber { get; set; } = string.Empty;
         [PhoneNumberValidation]
-        public string PhoneNumber2 { get; set; } = string.Empty;
-        [PhoneNumberValidation]
-        public string Email { get; set; } = string.Empty;
+        public string? PhoneNumber2 { get; set; }
+        [EmailAddress]
+        public string? Email { get; set; }
         public Guid? LogoFileId { get; set; }
         public UploadedFileViewModel? LogoFile { get; set; } = null;
         public decimal? Latitude { get; set; }

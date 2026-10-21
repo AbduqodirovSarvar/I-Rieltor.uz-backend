@@ -34,6 +34,8 @@ namespace Application.Extentions
             services.AddScoped<ISlideService, SlideService>();
             services.AddScoped<ICompanyService, CompanyService>();
 
+            // Resolvers with dependencies are created by the container.
+            services.AddTransient<FileUrlResolver>();
             services.AddAutoMapper(cfg =>
             {
                 cfg.AddMaps(typeof(AssemblyMarker).Assembly);
