@@ -4,7 +4,9 @@ using Domain.Enums;
 namespace Domain.Entities
 {
     /// <summary>
-    /// Tugagan auksion natijasi (bayonnoma). Har auksionda bittadan.
+    /// Tugagan auksion natijasi (bayonnoma). Har auksionda bittadan. Xaridor maydonlari hozirgi (yoki yakuniy)
+    /// xaridorni ko'rsatadi: g'olib voz kechib, obyekt ikkinchi o'ringa o'tsa, ular almashadi. Kimga qachon
+    /// taklif qilingani tarixi <see cref="Awards"/>da.
     /// </summary>
     public class AuctionResult : AudiTableEntity
     {
@@ -24,27 +26,27 @@ namespace Domain.Entities
         public AuctionOutcome Outcome { get; set; }
 
         /// <summary>
-        /// G'olib ishtirokchi Id'si. G'olib bo'lmasa null.
+        /// Xaridor ishtirokchi Id'si (to'lov kutilayotgan yoki to'lagan). Xaridor bo'lmasa null.
         /// </summary>
         public Guid? WinnerParticipantId { get; set; }
 
         /// <summary>
-        /// G'olib ishtirokchi (navigatsiya).
+        /// Xaridor ishtirokchi (navigatsiya).
         /// </summary>
         public AuctionParticipant? WinnerParticipant { get; set; }
 
         /// <summary>
-        /// G'olib taklif Id'si.
+        /// Xaridorning taklifi Id'si.
         /// </summary>
         public Guid? WinningBidId { get; set; }
 
         /// <summary>
-        /// Yakuniy narx, so'm (g'olib taklif summasi).
+        /// Sotish narxi, so'm (xaridor taklifining summasi; ikkinchi o'rinda uning o'z taklifi).
         /// </summary>
         public decimal? FinalPrice { get; set; }
 
         /// <summary>
-        /// G'olib yakuniy to'lovni shu vaqtgacha qilishi kerak.
+        /// Xaridor yakuniy to'lovni shu vaqtgacha qilishi kerak.
         /// </summary>
         public DateTime? PaymentDueAt { get; set; }
 
@@ -57,5 +59,10 @@ namespace Domain.Entities
         /// Bayonnoma fayli (navigatsiya).
         /// </summary>
         public UploadedFile? ProtocolFile { get; set; }
+
+        /// <summary>
+        /// Sotish takliflari: 1-o'rin (g'olib) va kerak bo'lsa 2-o'rin.
+        /// </summary>
+        public ICollection<AuctionAward> Awards { get; set; } = [];
     }
 }

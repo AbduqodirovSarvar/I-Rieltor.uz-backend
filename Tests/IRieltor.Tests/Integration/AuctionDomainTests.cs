@@ -123,6 +123,47 @@ namespace IRieltor.Tests.Integration
         }
 
         [Fact]
+        public async Task When_the_winner_defaults_the_property_goes_to_the_runner_up_at_its_own_bid()
+        {
+            var (_, auction, a, b) = await SeedAsync("runner");
+            var bidB = new Bid { AuctionId = auction.Id, ParticipantId = b.Id, Amount = 103_000_000m };
+            var bidA = new Bid { AuctionId = auction.Id, ParticipantId = a.Id, Amount = 104_000_000m };
+            await SaveAsync(bidB);
+            await SaveAsync(bidA);
+            var result = new AuctionResult { AuctionId = auction.Id, Outcome = AuctionOutcome.AWAITING_PAYMENT, WinnerParticipantId = a.Id, WinningBidId = bidA.Id, FinalPrice = bidA.Amount };
+            var winner = new AuctionAward { AuctionResultId = result.Id, Rank = 1, ParticipantId = a.Id, BidId = bidA.Id, Price = bidA.Amount, Status = AwardStatus.ACCEPTED };
+            await SaveAsync(result, winner);
+
+            // While the winner's award is live, nobody else can be offered the property.
+            AuctionAward RunnerUp() => new() { AuctionResultId = result.Id, Rank = 2, ParticipantId = b.Id, BidId = bidB.Id, Price = bidB.Amount, Status = AwardStatus.OFFERED };
+            var ex = await Assert.ThrowsAsync<DbUpdateException>(() => SaveAsync(RunnerUp()));
+            Assert.Equal("IX_AuctionAwards_AuctionResultId_Live", ConstraintOf(ex));
+
+            // The winner cannot simply "decline" like the runner-up: refusing is a default.
+            var pg = await Assert.ThrowsAsync<PostgresException>(() =>
+                api.ScalarAsync<object>($"update \"AuctionAwards\" set \"Status\" = 'DECLINED' where \"Id\" = '{winner.Id}'"));
+            Assert.Equal("CK_AuctionAwards_WinnerBound", pg.ConstraintName);
+
+            await api.ScalarAsync<object>($"update \"AuctionAwards\" set \"Status\" = 'DEFAULTED', \"ResolvedAt\" = now() where \"Id\" = '{winner.Id}'");
+            await api.ScalarAsync<object>($"update \"AuctionParticipants\" set \"DepositStatus\" = 'FORFEITED' where \"Id\" = '{a.Id}'");
+            await SaveAsync(RunnerUp());
+            await api.ScalarAsync<object>($"update \"AuctionResults\" set \"WinnerParticipantId\" = '{b.Id}', \"WinningBidId\" = '{bidB.Id}', \"FinalPrice\" = {bidB.Amount} where \"Id\" = '{result.Id}'");
+
+            Assert.Equal(103_000_000m, await api.ScalarAsync<decimal>($"select \"FinalPrice\" from \"AuctionResults\" where \"Id\" = '{result.Id}'"));
+            Assert.Equal("FORFEITED", await api.ScalarAsync<string>($"select \"DepositStatus\" from \"AuctionParticipants\" where \"Id\" = '{a.Id}'"));
+
+            // Only two places.
+            await api.SignUpAsync("bidder_c_runner");
+            var c = new AuctionParticipant { AuctionId = auction.Id, UserId = await api.ScalarAsync<Guid>("select \"Id\" from \"Users\" where \"Login\" = 'bidder_c_runner'"), Status = ParticipantStatus.APPROVED, ParticipantNumber = 3 };
+            var bidC = new Bid { AuctionId = auction.Id, ParticipantId = c.Id, Amount = 102_000_000m };
+            await SaveAsync(c);
+            await SaveAsync(bidC);
+            await api.ScalarAsync<object>($"update \"AuctionAwards\" set \"Status\" = 'DECLINED' where \"Rank\" = 2 and \"AuctionResultId\" = '{result.Id}'");
+            ex = await Assert.ThrowsAsync<DbUpdateException>(() => SaveAsync(new AuctionAward { AuctionResultId = result.Id, Rank = 3, ParticipantId = c.Id, BidId = bidC.Id, Price = bidC.Amount, Status = AwardStatus.OFFERED }));
+            Assert.Equal("CK_AuctionAwards_Rank", ConstraintOf(ex));
+        }
+
+        [Fact]
         public async Task A_user_applies_once_per_auction_and_category_names_ignore_case()
         {
             var (_, auction, a, _) = await SeedAsync("once");

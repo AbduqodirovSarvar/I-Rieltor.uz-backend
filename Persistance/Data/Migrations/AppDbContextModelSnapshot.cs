@@ -74,6 +74,9 @@ namespace Persistance.Data.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<bool>("OfferToRunnerUp")
+                        .HasColumnType("boolean");
+
                     b.Property<Guid>("PropertyId")
                         .HasColumnType("uuid");
 
@@ -136,6 +139,92 @@ namespace Persistance.Data.Migrations
                             t.HasCheckConstraint("CK_Auctions_StartingPrice", "\"StartingPrice\" > 0");
 
                             t.HasCheckConstraint("CK_Auctions_Times", "\"ApplicationDeadline\" <= \"StartsAt\" AND \"StartsAt\" < \"EndsAt\"");
+                        });
+                });
+
+            modelBuilder.Entity("Domain.Entities.AuctionAward", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AuctionResultId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BidId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("ParticipantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("PaymentDueAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("Rank")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("RespondBy")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuctionResultId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_AuctionAwards_AuctionResultId_Live")
+                        .HasFilter("\"IsDeleted\" = false AND \"Status\" IN ('OFFERED', 'ACCEPTED')");
+
+                    b.HasIndex("BidId");
+
+                    b.HasIndex("ParticipantId");
+
+                    b.HasIndex("AuctionResultId", "ParticipantId")
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = false");
+
+                    b.HasIndex("AuctionResultId", "Rank")
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = false");
+
+                    b.ToTable("AuctionAwards", t =>
+                        {
+                            t.HasCheckConstraint("CK_AuctionAwards_Price", "\"Price\" > 0");
+
+                            t.HasCheckConstraint("CK_AuctionAwards_Rank", "\"Rank\" BETWEEN 1 AND 2");
+
+                            t.HasCheckConstraint("CK_AuctionAwards_WinnerBound", "\"Rank\" = 2 OR \"Status\" NOT IN ('OFFERED', 'DECLINED', 'EXPIRED')");
                         });
                 });
 
@@ -290,7 +379,7 @@ namespace Persistance.Data.Migrations
                         {
                             t.HasCheckConstraint("CK_AuctionResults_FinalPrice", "\"FinalPrice\" IS NULL OR \"FinalPrice\" > 0");
 
-                            t.HasCheckConstraint("CK_AuctionResults_Winner", "(\"Outcome\" IN ('SOLD', 'WINNER_REFUSED')) = (\"WinnerParticipantId\" IS NOT NULL AND \"WinningBidId\" IS NOT NULL AND \"FinalPrice\" IS NOT NULL)");
+                            t.HasCheckConstraint("CK_AuctionResults_Winner", "(\"Outcome\" IN ('AWAITING_PAYMENT', 'SOLD')) = (\"WinnerParticipantId\" IS NOT NULL AND \"WinningBidId\" IS NOT NULL AND \"FinalPrice\" IS NOT NULL)");
                         });
                 });
 
@@ -1152,6 +1241,33 @@ namespace Persistance.Data.Migrations
                     b.Navigation("Property");
                 });
 
+            modelBuilder.Entity("Domain.Entities.AuctionAward", b =>
+                {
+                    b.HasOne("Domain.Entities.AuctionResult", "AuctionResult")
+                        .WithMany("Awards")
+                        .HasForeignKey("AuctionResultId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.Bid", "Bid")
+                        .WithMany()
+                        .HasForeignKey("BidId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.AuctionParticipant", "Participant")
+                        .WithMany()
+                        .HasForeignKey("ParticipantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("AuctionResult");
+
+                    b.Navigation("Bid");
+
+                    b.Navigation("Participant");
+                });
+
             modelBuilder.Entity("Domain.Entities.AuctionParticipant", b =>
                 {
                     b.HasOne("Domain.Entities.Auction", "Auction")
@@ -1341,6 +1457,11 @@ namespace Persistance.Data.Migrations
             modelBuilder.Entity("Domain.Entities.Auction", b =>
                 {
                     b.Navigation("Participants");
+                });
+
+            modelBuilder.Entity("Domain.Entities.AuctionResult", b =>
+                {
+                    b.Navigation("Awards");
                 });
 
             modelBuilder.Entity("Domain.Entities.Property", b =>

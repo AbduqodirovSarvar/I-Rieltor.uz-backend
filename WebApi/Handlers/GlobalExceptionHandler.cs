@@ -58,6 +58,8 @@ namespace WebApi.Handlers
                     => (HttpStatusCode.Conflict, "A record with the same unique value already exists."),
                 DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.ForeignKeyViolation } }
                     => (HttpStatusCode.Conflict, "The record is linked to other records and cannot be changed or deleted."),
+                DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.CheckViolation } }
+                    => (HttpStatusCode.BadRequest, "A value is not allowed (for example a negative price or an end before the start)."),
                 DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.StringDataRightTruncation } }
                     => (HttpStatusCode.BadRequest, "A value is too long."),
                 NotImplementedException

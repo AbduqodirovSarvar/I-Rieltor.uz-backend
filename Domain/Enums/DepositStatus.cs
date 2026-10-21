@@ -10,15 +10,15 @@ namespace Domain.Enums
         /// </summary>
         NOT_PAID,
         /// <summary>
-        /// To'langan.
+        /// To'langan. G'olib va ikkinchi o'rinniki natija aniq bo'lguncha ushlab turiladi.
         /// </summary>
         PAID,
         /// <summary>
-        /// Qaytarilgan (yutqazgan yoki auksion bo'lmagan).
+        /// Qaytarilgan (yutqazgan, auksion bo'lmagan yoki ikkinchi o'rin taklifni rad etgan).
         /// </summary>
         REFUNDED,
         /// <summary>
-        /// Qaytarilmaydi (g'olib shartnomadan voz kechgan).
+        /// Qaytarilmaydi: g'olib to'lovdan voz kechgan yoki taklifni qabul qilgan xaridor to'lamagan.
         /// </summary>
         FORFEITED
     }

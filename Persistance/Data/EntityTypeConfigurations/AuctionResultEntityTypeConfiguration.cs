@@ -35,9 +35,9 @@ namespace Persistance.Data.EntityTypeConfigurations
 
             builder.ToTable(t =>
             {
-                // A winner (with the winning bid and the price) exactly for SOLD and WINNER_REFUSED.
+                // A buyer (with the bid and the price) exactly while the payment is awaited and once sold.
                 t.HasCheckConstraint("CK_AuctionResults_Winner",
-                    "(\"Outcome\" IN ('SOLD', 'WINNER_REFUSED')) = (\"WinnerParticipantId\" IS NOT NULL AND \"WinningBidId\" IS NOT NULL AND \"FinalPrice\" IS NOT NULL)");
+                    "(\"Outcome\" IN ('AWAITING_PAYMENT', 'SOLD')) = (\"WinnerParticipantId\" IS NOT NULL AND \"WinningBidId\" IS NOT NULL AND \"FinalPrice\" IS NOT NULL)");
                 t.HasCheckConstraint("CK_AuctionResults_FinalPrice", "\"FinalPrice\" IS NULL OR \"FinalPrice\" > 0");
             });
         }

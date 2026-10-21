@@ -6,9 +6,17 @@ namespace Domain.Enums
     public enum AuctionOutcome
     {
         /// <summary>
-        /// G'olib aniqlangan.
+        /// Xaridor aniqlangan (g'olib yoki taklifni qabul qilgan ikkinchi o'rin), yakuniy to'lov kutilmoqda.
+        /// </summary>
+        AWAITING_PAYMENT,
+        /// <summary>
+        /// Xaridor to'lagan, obyekt sotilgan.
         /// </summary>
         SOLD,
+        /// <summary>
+        /// Xaridorlar voz kechgan yoki to'lamagan (g'olib, kerak bo'lsa ikkinchi o'rin ham).
+        /// </summary>
+        NOT_SOLD,
         /// <summary>
         /// Tasdiqlangan ishtirokchi bo'lmagan.
         /// </summary>
@@ -16,10 +24,6 @@ namespace Domain.Enums
         /// <summary>
         /// Birorta taklif berilmagan.
         /// </summary>
-        NO_BIDS,
-        /// <summary>
-        /// G'olib to'lovdan yoki shartnomadan voz kechgan.
-        /// </summary>
-        WINNER_REFUSED
+        NO_BIDS
     }
 }

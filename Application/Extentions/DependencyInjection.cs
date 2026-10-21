@@ -31,6 +31,8 @@ namespace Application.Extentions
             services.AddScoped<IUploadedFileService, UploadedFileService>();
             services.AddScoped<ISlideService, SlideService>();
             services.AddScoped<ICompanyService, CompanyService>();
+            services.AddScoped<IPropertyCategoryService, PropertyCategoryService>();
+            services.AddScoped<IPropertyService, PropertyService>();
 
             // ServiceMapper (not the plain Mapper) gives mapping rules the request's services (MapContext.Current.GetService).
             var mappingConfig = new TypeAdapterConfig();

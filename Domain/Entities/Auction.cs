@@ -1,4 +1,4 @@
-﻿using Domain.Abstractions;
+using Domain.Abstractions;
 using Domain.Behaviours;
 using Domain.Enums;
 
@@ -89,6 +89,12 @@ namespace Domain.Entities
         /// Eng yuqori taklif Id'si.
         /// </summary>
         public Guid? LeadingBidId { get; set; }
+
+        /// <summary>
+        /// G'olib voz kechsa yoki to'lamasa, obyekt ikkinchi o'rindagi ishtirokchiga uning eng yuqori taklifi
+        /// narxida taklif qilinadimi.
+        /// </summary>
+        public bool OfferToRunnerUp { get; set; } = true;
 
         /// <summary>
         /// Bekor qilinganda sabab.

@@ -48,6 +48,10 @@ namespace Persistance.Extentions
             services.AddScoped<ISlideRepository, SlideRepository>();
             services.AddScoped<ICompanyRepository, CompanyRepository>();
             services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+            services.AddScoped<IPropertyCategoryRepository, PropertyCategoryRepository>();
+            services.AddScoped<IPropertyRepository, PropertyRepository>();
+            services.AddScoped<IPropertyMediaRepository, PropertyMediaRepository>();
+            services.AddScoped<IAuctionRepository, AuctionRepository>();
             services.AddSingleton<IHashService, HashService>();
             services.AddSingleton<ITokenService, TokenService>();
             // A typo in a number (e.g. TokenHours=0) stops the app at start, not at the first email or sign-in.

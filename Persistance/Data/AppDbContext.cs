@@ -1,4 +1,4 @@
-﻿using Domain.Entities;
+using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -29,6 +29,7 @@ namespace Persistance.Data
         public virtual DbSet<AuctionParticipant> AuctionParticipants { get; set; }
         public virtual DbSet<Bid> Bids { get; set; }
         public virtual DbSet<AuctionResult> AuctionResults { get; set; }
+        public virtual DbSet<AuctionAward> AuctionAwards { get; set; }
         public virtual DbSet<Payment> Payments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
