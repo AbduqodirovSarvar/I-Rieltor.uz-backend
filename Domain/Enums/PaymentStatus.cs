@@ -1,31 +1,29 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace Domain.Enums
 {
     /// <summary>
-    /// Auksion g'olibining to'lov holati.
+    /// To'lov holati. Bazada matn sifatida saqlanadi.
     /// </summary>
     public enum PaymentStatus
     {
         /// <summary>
-        /// To'lov kutilmoqda, hali hech narsa to'lanmagan.
+        /// Yaratilgan, to'lov tizimidan javob kutilmoqda.
         /// </summary>
         PENDING,
         /// <summary>
-        /// Summaning bir qismi to'langan.
-        /// </summary>
-        PARTIALLY_PAID,
-        /// <summary>
-        /// To'liq to'langan.
+        /// To'langan.
         /// </summary>
         PAID,
         /// <summary>
-        /// To'lov muddati o'tib ketgan.
+        /// To'lov o'tmagan.
         /// </summary>
-        OVERDUE
+        FAILED,
+        /// <summary>
+        /// Bekor qilingan (to'lov tizimi yoki admin).
+        /// </summary>
+        CANCELLED,
+        /// <summary>
+        /// Pul qaytarilgan.
+        /// </summary>
+        REFUNDED
     }
 }

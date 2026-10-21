@@ -1,36 +1,37 @@
 ﻿using Domain.Abstractions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Domain.Behaviours;
 
 namespace Domain.Entities
 {
     /// <summary>
-    /// Ko'chmas mulk kategoriyasi. Ichma-ich (daraxt) bo'lishi mumkin,
-    /// masalan "Turar joy" ichida "Kvartira" va "Hovli".
+    /// Ko'chmas mulk toifasi (masalan "Turar joy" → "Kvartira"). Ichma-ich bo'lishi mumkin.
     /// </summary>
     public class PropertyCategory : AudiTableEntity
     {
         /// <summary>
-        /// Kategoriya nomi.
+        /// Toifa nomi. O'chirilmagan toifalar orasida takrorlanmaydi (katta-kichik harfga qaramay).
         /// </summary>
+        [Searchable]
         public string Name { get; set; } = string.Empty;
 
         /// <summary>
-        /// Kategoriya haqida izoh.
+        /// Qisqa tavsif.
         /// </summary>
-        public string Description { get; set; } = string.Empty;
+        public string? Description { get; set; }
 
         /// <summary>
-        /// Ota kategoriyaning Id'si. Eng yuqori darajadagi kategoriyada null bo'ladi.
+        /// Yuqori toifa Id'si (FK). Eng yuqori darajadagi toifada null.
         /// </summary>
-        public Guid? ParentCategoryId { get; set; } = null;
+        public Guid? ParentCategoryId { get; set; }
 
         /// <summary>
-        /// Ota kategoriya (navigatsiya).
+        /// Yuqori toifa (navigatsiya).
         /// </summary>
-        public PropertyCategory? ParentCategory { get; set; } = null;
+        public PropertyCategory? ParentCategory { get; set; }
+
+        /// <summary>
+        /// Ro'yxatdagi tartib raqami (kichigi oldin).
+        /// </summary>
+        public int SortOrder { get; set; }
     }
 }

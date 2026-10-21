@@ -1,55 +1,124 @@
 ﻿using Domain.Abstractions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Domain.Behaviours;
+using Domain.Enums;
 
 namespace Domain.Entities
 {
     /// <summary>
-    /// Sotuvga yoki auksionga qo'yiladigan ko'chmas mulk obyekti (uy, kvartira, yer, bino va h.k.).
+    /// Auksionga qo'yiladigan ko'chmas mulk obyekti. Narx va savdo shartlari obyektda emas, auksionda
+    /// (<see cref="Auction"/>): bir obyekt bir necha marta (masalan bo'lib o'tmagan savdodan keyin) qo'yilishi mumkin.
     /// </summary>
     public class Property : AudiTableEntity
     {
         /// <summary>
-        /// Obyekt nomi yoki e'lon sarlavhasi.
+        /// Katalogdagi sarlavha (masalan "3 xonali kvartira, Chilonzor").
         /// </summary>
-        public string Name { get; set; } = string.Empty;
+        [Searchable]
+        public string Title { get; set; } = string.Empty;
 
         /// <summary>
-        /// Obyektning batafsil tavsifi.
+        /// Batafsil tavsif.
         /// </summary>
-        public string Description { get; set; } = string.Empty;
+        public string? Description { get; set; }
 
         /// <summary>
-        /// Obyekt kategoriyasining Id'si (FK).
+        /// Toifa Id'si (FK).
         /// </summary>
         public Guid CategoryId { get; set; }
 
         /// <summary>
-        /// Obyekt kategoriyasi (navigatsiya).
+        /// Toifa (navigatsiya).
         /// </summary>
-        public PropertyCategory? Category { get; set; } = null;
+        public PropertyCategory? Category { get; set; }
 
         /// <summary>
-        /// Boshlang'ich narx: auksion shu summadan boshlanadi.
+        /// Holat; yangi obyekt qoralama sifatida yaratiladi.
         /// </summary>
-        public decimal InitialPrice { get; set; }
+        public PropertyStatus Status { get; set; } = PropertyStatus.DRAFT;
 
         /// <summary>
-        /// Obyekt sahifasi necha marta ko'rilgani (statistika uchun).
+        /// Viloyat (yoki Toshkent shahri).
         /// </summary>
-        public double ViewCount { get; set; }
+        [Searchable]
+        public string Region { get; set; } = string.Empty;
 
         /// <summary>
-        /// Obyektning sotuvdagi holati, matn ko'rinishida (<see cref="Enums.Status"/> qiymatlari).
+        /// Tuman yoki shahar.
         /// </summary>
-        public string Status { get; set; } = string.Empty;
+        [Searchable]
+        public string? District { get; set; }
 
         /// <summary>
-        /// Obyekt egasi (ism yoki tashkilot nomi, oddiy matn).
+        /// To'liq manzil.
         /// </summary>
-        public string Owner { get; set; } = string.Empty;
+        [Searchable]
+        public string Address { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Xaritadagi kenglik.
+        /// </summary>
+        public decimal? Latitude { get; set; }
+
+        /// <summary>
+        /// Xaritadagi uzunlik.
+        /// </summary>
+        public decimal? Longitude { get; set; }
+
+        /// <summary>
+        /// Kadastr raqami. Berilgan bo'lsa, o'chirilmagan obyektlar orasida takrorlanmaydi.
+        /// </summary>
+        [Searchable]
+        public string? CadastralNumber { get; set; }
+
+        /// <summary>
+        /// Umumiy maydon, kv. metr.
+        /// </summary>
+        public decimal? AreaSqm { get; set; }
+
+        /// <summary>
+        /// Yer maydoni, sotix (uy, yer uchastkasi uchun).
+        /// </summary>
+        public decimal? LandAreaSotix { get; set; }
+
+        /// <summary>
+        /// Xonalar soni.
+        /// </summary>
+        public int? Rooms { get; set; }
+
+        /// <summary>
+        /// Qavat.
+        /// </summary>
+        public int? Floor { get; set; }
+
+        /// <summary>
+        /// Binoning qavatlar soni.
+        /// </summary>
+        public int? TotalFloors { get; set; }
+
+        /// <summary>
+        /// Qurilgan yili.
+        /// </summary>
+        public int? BuildYear { get; set; }
+
+        /// <summary>
+        /// Baholangan qiymati, so'm (ma'lumot uchun; savdo narxi auksionda).
+        /// </summary>
+        public decimal? EstimatedValue { get; set; }
+
+        /// <summary>
+        /// Sotuvchi (mulk egasi yoki savdoga qo'ygan tashkilot) nomi.
+        /// </summary>
+        [Searchable]
+        public string? SellerName { get; set; }
+
+        /// <summary>
+        /// Katalogda ko'rilganlar soni.
+        /// </summary>
+        public long ViewCount { get; set; }
+
+        /// <summary>
+        /// Rasmlar, hujjatlar, videolar.
+        /// </summary>
+        public ICollection<PropertyMedia> Media { get; set; } = [];
     }
 }

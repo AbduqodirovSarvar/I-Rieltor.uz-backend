@@ -1,57 +1,103 @@
 ﻿using Domain.Abstractions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Domain.Behaviours;
+using Domain.Enums;
 
 namespace Domain.Entities
 {
     /// <summary>
-    /// Bitta ko'chmas mulk obyekti bo'yicha o'tkaziladigan auksion (savdo).
-    /// Bitta obyekt bir necha marta auksionga qo'yilishi mumkin (qayta savdo).
+    /// Bitta obyekt bo'yicha savdo (lot). Narx va qoidalar shu yerda, har auksion uchun alohida.
+    /// Barcha vaqtlar UTC.
     /// </summary>
     public class Auction : AudiTableEntity
     {
         /// <summary>
-        /// Auksion nomi.
+        /// Lot raqami (masalan "2026-000125"). Takrorlanmaydi.
         /// </summary>
+        [Searchable]
+        public string LotNumber { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Sarlavha (odatda obyekt sarlavhasi).
+        /// </summary>
+        [Searchable]
         public string Title { get; set; } = string.Empty;
 
         /// <summary>
-        /// Auksion shartlari va tavsifi.
+        /// Savdo shartlari, qo'shimcha ma'lumot.
         /// </summary>
-        public string Description { get; set; } = string.Empty;
+        public string? Description { get; set; }
 
         /// <summary>
-        /// Savdo boshlanadigan vaqt.
-        /// </summary>
-        public DateTime StartTime { get; set; }
-
-        /// <summary>
-        /// Savdo tugaydigan vaqt.
-        /// </summary>
-        public DateTime EndTime { get; set; }
-
-        /// <summary>
-        /// Auksion holati, matn ko'rinishida (<see cref="Enums.AuctionStatus"/> qiymatlari).
-        /// </summary>
-        public string Status { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Auksion yakunlangan narx, ya'ni g'olib taklif summasi. Tugamaguncha 0 bo'ladi.
-        /// </summary>
-        public decimal CompletedPrice { get; set; }
-
-        /// <summary>
-        /// Savdoga qo'yilgan obyektning Id'si (FK).
+        /// Sotiladigan obyekt Id'si (FK). Obyektda bir vaqtda faqat bitta faol (qoralama, e'lon qilingan
+        /// yoki ketayotgan) auksion bo'ladi.
         /// </summary>
         public Guid PropertyId { get; set; }
 
         /// <summary>
-        /// Savdoga qo'yilgan obyekt (navigatsiya).
+        /// Obyekt (navigatsiya).
         /// </summary>
-        public Property? Property { get; set; } = null;
+        public Property? Property { get; set; }
 
+        /// <summary>
+        /// Holat.
+        /// </summary>
+        public AuctionStatus Status { get; set; } = AuctionStatus.DRAFT;
+
+        /// <summary>
+        /// Boshlang'ich narx, so'm. Musbat.
+        /// </summary>
+        public decimal StartingPrice { get; set; }
+
+        /// <summary>
+        /// Eng kichik oshirish qadami, so'm: yangi taklif joriy narxdan kamida shuncha katta bo'lishi kerak. Musbat.
+        /// </summary>
+        public decimal MinBidStep { get; set; }
+
+        /// <summary>
+        /// Qatnashish uchun zakalat, so'm. 0 = zakalatsiz.
+        /// </summary>
+        public decimal DepositAmount { get; set; }
+
+        /// <summary>
+        /// Arizalar qabul qilinishining oxirgi vaqti. Savdo boshlanishidan kech emas.
+        /// </summary>
+        public DateTime ApplicationDeadline { get; set; }
+
+        /// <summary>
+        /// Savdo boshlanish vaqti.
+        /// </summary>
+        public DateTime StartsAt { get; set; }
+
+        /// <summary>
+        /// Savdo tugash vaqti; <see cref="ExtensionMinutes"/> bo'yicha cho'zilishi mumkin. Boshlanishidan keyin.
+        /// </summary>
+        public DateTime EndsAt { get; set; }
+
+        /// <summary>
+        /// Oxirgi daqiqalarda taklif tushsa, savdo shuncha daqiqaga cho'ziladi ("so'nggi soniya" taklifiga qarshi).
+        /// 0 = cho'zilmaydi.
+        /// </summary>
+        public int ExtensionMinutes { get; set; }
+
+        /// <summary>
+        /// Joriy (eng yuqori) narx. Taklif yo'q bo'lsa null. Taklif qabul qilinganda yangilanadi; auksion qatorining
+        /// versiyasi (xmin) bir vaqtdagi ikki taklifdan faqat bittasini o'tkazadi.
+        /// </summary>
+        public decimal? CurrentPrice { get; set; }
+
+        /// <summary>
+        /// Eng yuqori taklif Id'si.
+        /// </summary>
+        public Guid? LeadingBidId { get; set; }
+
+        /// <summary>
+        /// Bekor qilinganda sabab.
+        /// </summary>
+        public string? CancelReason { get; set; }
+
+        /// <summary>
+        /// Qatnashish arizalari.
+        /// </summary>
+        public ICollection<AuctionParticipant> Participants { get; set; } = [];
     }
 }

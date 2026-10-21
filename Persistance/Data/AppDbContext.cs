@@ -22,6 +22,14 @@ namespace Persistance.Data
         public virtual DbSet<Slide> Slides { get; set; }
         public virtual DbSet<Company> Companies { get; set; }
         public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
+        public virtual DbSet<PropertyCategory> PropertyCategories { get; set; }
+        public virtual DbSet<Property> Properties { get; set; }
+        public virtual DbSet<PropertyMedia> PropertyMedia { get; set; }
+        public virtual DbSet<Auction> Auctions { get; set; }
+        public virtual DbSet<AuctionParticipant> AuctionParticipants { get; set; }
+        public virtual DbSet<Bid> Bids { get; set; }
+        public virtual DbSet<AuctionResult> AuctionResults { get; set; }
+        public virtual DbSet<Payment> Payments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
