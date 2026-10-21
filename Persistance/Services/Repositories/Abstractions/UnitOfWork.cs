@@ -11,6 +11,7 @@ namespace Persistance.Services.Repositories.Abstractions
     {
         private readonly List<Func<Task>> _afterCommit = [];
         private readonly List<Func<Task>> _onRollback = [];
+        private readonly List<Func<Task>> _onCommitUnknown = [];
         private int _depth;
 
         public async Task<T> ExecuteAsync<T>(Func<Task<T>> action, CancellationToken cancellationToken = default)
@@ -45,6 +46,7 @@ namespace Persistance.Services.Repositories.Abstractions
                 // Entities saved inside the transaction are tracked as stored although they are not.
                 context.ChangeTracker.Clear();
                 _afterCommit.Clear();
+                _onCommitUnknown.Clear();
                 await RunAsync(Drain(_onRollback), "rollback");
                 throw;
             }
@@ -65,11 +67,13 @@ namespace Persistance.Services.Repositories.Abstractions
                 context.ChangeTracker.Clear();
                 _onRollback.Clear();
                 _afterCommit.Clear();
+                await RunAsync(Drain(_onCommitUnknown), "commit-outcome-unknown");
                 throw;
             }
 
             _depth = 0;
             _onRollback.Clear();
+            _onCommitUnknown.Clear();
             await RunAsync(Drain(_afterCommit), "after-commit");
             return result;
         }
@@ -86,6 +90,12 @@ namespace Persistance.Services.Repositories.Abstractions
         {
             if (_depth > 0)
                 _onRollback.Add(callback);
+        }
+
+        public void OnCommitOutcomeUnknown(Func<Task> callback)
+        {
+            if (_depth > 0)
+                _onCommitUnknown.Add(callback);
         }
 
         private static List<Func<Task>> Drain(List<Func<Task>> callbacks)

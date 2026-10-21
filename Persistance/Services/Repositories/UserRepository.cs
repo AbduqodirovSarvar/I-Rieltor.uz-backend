@@ -18,21 +18,6 @@ namespace Persistance.Services.Repositories
         // Users carry PasswordHash, so they are never written to Redis.
         protected override bool UseCache => false;
 
-        public async Task<bool> CheckLogin(string login, CancellationToken cancellationToken = default)
-        {
-            return await _dbSet.AsNoTracking().AnyAsync(x => x.Login == login, cancellationToken);
-        }
-
-        public async Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
-        {
-            return await _dbSet.AsNoTracking().FirstOrDefaultAsync(x => x.Email == email, cancellationToken);
-        }
-
-        public async Task<User?> GetByUsernameAsync(string login, CancellationToken cancellationToken = default)
-        {
-            return await _dbSet.AsNoTracking().FirstOrDefaultAsync(x => x.Login == login, cancellationToken);
-        }
-
         public async Task<bool> ExistsWithAnyAsync(
             string? login,
             string? email,

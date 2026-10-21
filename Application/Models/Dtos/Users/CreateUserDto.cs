@@ -14,12 +14,16 @@ namespace Application.Models.Dtos.Users
     {
         public ClientType Type { get; set; } = ClientType.NONE;
         [Required]
+        [MaxLength(100)]
         public string FirstName { get; set; } = string.Empty;
         [Required]
+        [MaxLength(100)]
         public string LastName { get; set; } = string.Empty;
+        [MaxLength(100)]
         public string? MiddleName { get; set; } = null;
         [RegularExpression(@"^[A-Za-z][A-Za-z0-9_.]{2,49}$", ErrorMessage = "Login must start with a letter and contain 3-50 letters, digits, '_' or '.'.")]
         public string? Login { get; set; } = null;
+        [MaxLength(200)]
         public string? LegalName { get; set; } = null;
         [INNPINFLValidation]
         public string? INNPINFL { get; set; } = null;
@@ -27,9 +31,11 @@ namespace Application.Models.Dtos.Users
         public string? Phone { get; set; } = null;
         [PhoneNumberValidation]
         public string? SecondaryPhone { get; set; } = null;
+        [MaxLength(300)]
         public string? Address { get; set; } = null;
         [Required]
         [EmailAddress]
+        [MaxLength(150)]
         public string Email { get; set; } = string.Empty;
         [Required]
         [PasswordValidation]

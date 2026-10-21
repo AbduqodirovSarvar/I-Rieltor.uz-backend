@@ -66,7 +66,7 @@ namespace Application.Services.EntityServices
         private async Task<ResponseModel<UploadedFileViewModel>> UpdateInTransactionAsync(UpdateUploadedFileDto entityUpdateDto, CancellationToken cancellationToken)
         {
             var entity = await _repository.GetAsync(x => x.Id == entityUpdateDto.Id, cancellationToken)
-                                ?? throw new KeyNotFoundException("Entity not found");
+                                ?? throw new NotFoundException("Entity not found");
 
             if (entityUpdateDto.File != null)
             {
@@ -99,7 +99,7 @@ namespace Application.Services.EntityServices
         private async Task<ResponseModel<bool>> DeleteInTransactionAsync(Guid id, CancellationToken cancellationToken)
         {
             var entity = await _repository.GetAsync(x => x.Id == id, cancellationToken)
-                                ?? throw new KeyNotFoundException("Entity not found");
+                                ?? throw new NotFoundException("Entity not found");
 
             var deleted = await _repository.DeleteAsync(entity, cancellationToken);
             await _unitOfWork.AfterCommitAsync(() => _fileService.DeleteFileAsync(entity.Name, entity.EntityName.ToLower()));
@@ -114,7 +114,7 @@ namespace Application.Services.EntityServices
                 throw new ForbiddenException("You do not have permission to create this entity.");
 
             var entity = await _repository.GetByIdAsync(id, cancellationToken)
-                                ?? throw new KeyNotFoundException("Entity not found");
+                                ?? throw new NotFoundException("Entity not found");
 
             return ResponseModel<UploadedFileViewModel?>.Ok(_mapper.Map<UploadedFileViewModel>(entity));
         }
@@ -126,7 +126,7 @@ namespace Application.Services.EntityServices
                 throw new ForbiddenException("You do not have permission to create this entity.");
 
             var entity = await _repository.GetAsync(predicate, cancellationToken)
-                                ?? throw new KeyNotFoundException("Entity not found");
+                                ?? throw new NotFoundException("Entity not found");
 
             return ResponseModel<UploadedFileViewModel?>.Ok(_mapper.Map<UploadedFileViewModel>(entity));
         }

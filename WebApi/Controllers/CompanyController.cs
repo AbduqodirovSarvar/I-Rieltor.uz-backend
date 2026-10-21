@@ -64,7 +64,7 @@ namespace WebApi.Controllers
         [HttpGet("public")]
         public async Task<IActionResult> GetPublic()
         {
-            var result = await _mediator.Send(new GetPublicCompanyQuery());
+            var result = await _mediator.Send(new GetPublicCompanyQuery(), HttpContext.RequestAborted);
             return Ok(result);
         }
     }

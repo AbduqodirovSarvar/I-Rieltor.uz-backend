@@ -64,7 +64,7 @@ namespace WebApi.Controllers
         [HttpGet("public")]
         public async Task<IActionResult> GetPublic()
         {
-            var result = await _mediator.Send(new GetPublicSlideListQuery());
+            var result = await _mediator.Send(new GetPublicSlideListQuery(), HttpContext.RequestAborted);
             return Ok(result);
         }
     }

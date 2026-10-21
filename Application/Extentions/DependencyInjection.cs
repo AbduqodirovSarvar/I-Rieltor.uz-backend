@@ -1,11 +1,9 @@
 ﻿using Application.Authorization;
 using Application.Interfaces.Auths;
 using Application.Interfaces.EntityServices;
-using Application.Interfaces.EntityServices.Abstractions;
 using Application.Mappings;
 using Application.Services.Auths;
 using Application.Services.EntityServices;
-using Application.Services.EntityServices.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
@@ -24,7 +22,6 @@ namespace Application.Extentions
                 cfg.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly);
             });
 
-            services.AddScoped(typeof(IGenericEntityService<,,,>), typeof(GenericEntityService<,,,>));
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IUserAccessGuard, UserAccessGuard>();

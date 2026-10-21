@@ -14,7 +14,7 @@ namespace Application.Mappings
     {
         public UserRoleMappingProfile()
         {
-            CreateMap<UserRole, UserRoleViewModel>().ReverseMap();
+            CreateMap<UserRole, UserRoleViewModel>();
             CreateMap<CreateUserRoleDto, UserRole>();
             CreateMap<UpdateUserRoleDto, UserRole>();
         }

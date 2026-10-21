@@ -46,7 +46,7 @@ namespace Application.Services.EntityServices
                 throw new BadRequestException($"Unknown permission '{entityCreateDto.Permission}'. See GET api/UserRolePermission/all-permissions.");
 
             if (!await _userRoleRepository.AnyAsync(x => x.Id == entityCreateDto.UserRoleId, cancellationToken))
-                throw new KeyNotFoundException("Role not found");
+                throw new NotFoundException("Role not found");
 
             // Only permissions the caller holds, never to the caller's own role or to SUPER_ADMIN.
             await _accessGuard.EnsureCanChangeRolePermissionAsync(entityCreateDto.UserRoleId, entityCreateDto.Permission, cancellationToken);
@@ -66,7 +66,7 @@ namespace Application.Services.EntityServices
                 throw new ForbiddenException("You do not have permission to delete this entity.");
 
             var entity = await _repository.GetAsync(x => x.Id == id, cancellationToken)
-                                ?? throw new KeyNotFoundException("Entity not found");
+                                ?? throw new NotFoundException("Entity not found");
             await _accessGuard.EnsureCanChangeRolePermissionAsync(entity.UserRoleId, entity.Permission, cancellationToken);
 
             return ResponseModel<bool>.Ok(await _repository.DeleteAsync(entity, cancellationToken));

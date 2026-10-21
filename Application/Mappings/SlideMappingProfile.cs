@@ -14,9 +14,9 @@ namespace Application.Mappings
     {
         public SlideMappingProfile() 
         {
-            CreateMap<Slide, SlideViewModel>().ReverseMap();
-            CreateMap<CreateSlideDto, Slide>().ReverseMap();
-            CreateMap<UpdateSlideDto, Slide>().ReverseMap();
+            CreateMap<Slide, SlideViewModel>();
+            CreateMap<CreateSlideDto, Slide>();
+            CreateMap<UpdateSlideDto, Slide>();
         }
     }
 }

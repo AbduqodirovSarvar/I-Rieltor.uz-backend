@@ -19,7 +19,7 @@ namespace Persistance.Data.Seeds
     public static class DefaultDataSeeder
     {
         private const string LegacyDefaultPassword = "SuperAdmin@123";
-        private const string BootstrapAdminLogin = "SUPER_ADMIN";
+        private const string BootstrapAdminLogin = SystemRoles.BootstrapAdminLogin;
         // Any constant: instances starting at the same time seed one after another instead of racing on unique indexes.
         private const long SeedLockKey = 7_212_605_001;
 
@@ -131,24 +131,20 @@ namespace Persistance.Data.Seeds
             if (await context.Users.AnyAsync(x => x.UserRoleId == role.Id))
                 return;
 
-            if (bootstrap != null)
-            {
-                logger.LogWarning("No active SUPER_ADMIN user found; giving the role back to user '{Login}'", BootstrapAdminLogin);
-                bootstrap.UserRoleId = role.Id;
-                await context.SaveChangesAsync();
-                return;
-            }
+            // Never promote an existing account: whoever holds a login is not proof of being the administrator.
+            // A new account is created instead; if the bootstrap login is taken, a suffixed one, written to the log.
+            var login = bootstrap == null ? BootstrapAdminLogin : $"{BootstrapAdminLogin}_{Guid.NewGuid():N}"[..(BootstrapAdminLogin.Length + 7)];
 
             // The configured email may meanwhile belong to someone else; the unique index would stop the app from starting.
-            var email = adminConfiguration.Email;
+            var email = adminConfiguration.Email?.Trim();
             if (!string.IsNullOrWhiteSpace(email) && await context.Users.AnyAsync(x => x.Email == email))
                 email = null;
 
-            logger.LogWarning("No active SUPER_ADMIN user found; creating user '{Login}' with DefaultAdmin__Password", BootstrapAdminLogin);
+            logger.LogWarning("No active SUPER_ADMIN user found; creating user '{Login}' with DefaultAdmin__Password", login);
             await context.Users.AddAsync(new User
             {
                 FullName = "Super Administrator",
-                Login = BootstrapAdminLogin,
+                Login = login,
                 Email = email,
                 Type = ClientType.NONE,
                 UserRoleId = role.Id,

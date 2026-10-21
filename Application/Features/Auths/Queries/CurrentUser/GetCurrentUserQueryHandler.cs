@@ -1,3 +1,4 @@
+using Application.Exceptions;
 using Application.Features.Abstractions.Queries.Interfaces;
 using Application.Interfaces.EntityServices;
 using Application.Models.Results;
@@ -15,7 +16,7 @@ namespace Application.Features.Auths.Queries.CurrentUser
         {
             // A valid token whose user was deleted counts as signed out.
             var user = await _userService.GetCurrentUser(cancellationToken)
-                            ?? throw new UnauthorizedAccessException("User not found.");
+                            ?? throw new UnauthenticatedException("User not found.");
 
             return ResponseModel<UserViewModel>.Ok(_mapper.Map<UserViewModel>(user));
         }

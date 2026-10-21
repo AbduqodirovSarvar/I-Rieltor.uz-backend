@@ -23,7 +23,7 @@ namespace Persistance.Services.Auths
         public async Task<bool> Check(string permission)
         {
             var user = await _currentUserService.GetCurrentUserAsync()
-                        ?? throw new UnauthorizedAccessException("You don't have access for this action!");
+                        ?? throw new UnauthenticatedException("You don't have access for this action!");
 
             if(user.UserRoleId == null)
                 throw new ForbiddenException("You don't have access for this action!");
@@ -38,7 +38,7 @@ namespace Persistance.Services.Auths
         public async Task<bool> Check(string permission, User user)
         {
             user ??= await _currentUserService.GetCurrentUserAsync()
-                        ?? throw new UnauthorizedAccessException("You don't have access for this action!");
+                        ?? throw new UnauthenticatedException("You don't have access for this action!");
 
             if (user.UserRoleId == null)
                 throw new ForbiddenException("You don't have access for this action!");

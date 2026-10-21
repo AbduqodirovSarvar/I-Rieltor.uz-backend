@@ -1,3 +1,4 @@
+using Domain.Behaviours;
 using Application.Features.Abstractions.Commands.Interfaces;
 using Application.Interfaces.EntityServices;
 using Application.Models.Results;
@@ -13,9 +14,11 @@ namespace Application.Features.Users.Commands.AssignRole
     public record AssignUserRoleCommand : ICommand<ResponseModel<UserViewModel>>
     {
         [Required]
+        [NotEmptyGuid]
         public Guid UserId { get; init; }
 
         [Required]
+        [NotEmptyGuid]
         public Guid UserRoleId { get; init; }
     }
 

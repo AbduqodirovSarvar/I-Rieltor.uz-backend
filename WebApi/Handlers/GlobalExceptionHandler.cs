@@ -35,13 +35,15 @@ namespace WebApi.Handlers
             var (status, message) = exception switch
             {
                 // Not (or no longer) signed in; ForbiddenException is the "signed in, but not allowed" case.
-                UnauthorizedAccessException
+                // Deliberately not UnauthorizedAccessException: the BCL throws it for file permissions, and its
+                // message ("Access to the path '/data/files/...' is denied") must not reach clients as a 401.
+                UnauthenticatedException
                     => (HttpStatusCode.Unauthorized, exception.Message),
                 ForbiddenException
                     => (HttpStatusCode.Forbidden, exception.Message),
                 BadRequestException
                     => (HttpStatusCode.BadRequest, exception.Message),
-                KeyNotFoundException
+                NotFoundException
                     => (HttpStatusCode.NotFound, exception.Message),
                 ConflictException
                     => (HttpStatusCode.Conflict, exception.Message),
@@ -71,6 +73,8 @@ namespace WebApi.Handlers
                 _logger.LogInformation("{Status} for {Method} {Path}: {Message}", (int)status, httpContext.Request.Method, httpContext.Request.Path, exception.Message);
 
             httpContext.Response.StatusCode = (int)status;
+            if (exception is TooManyRequestsException { RetryAfter: { } retryAfter })
+                httpContext.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(System.Globalization.CultureInfo.InvariantCulture);
             await httpContext.Response.WriteAsJsonAsync(ResponseModel<object>.Fail(message, statusCode: status), cancellationToken);
             return true;
         }

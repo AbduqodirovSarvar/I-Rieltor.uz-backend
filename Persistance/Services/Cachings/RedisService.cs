@@ -66,6 +66,38 @@ namespace Persistance.Services.Cachings
             }
         }
 
+        public async Task<bool> TryAcquireAsync(string key, TimeSpan expiration)
+        {
+            try
+            {
+                return await _database.StringSetAsync(key, 1, expiration, When.NotExists);
+            }
+            catch (Exception ex) when (ex is RedisException or TimeoutException)
+            {
+                _logger.LogWarning(ex, "Redis is unavailable, SET NX {Key} skipped", key);
+                return true;
+            }
+        }
+
+        // One script, so INCRBY and EXPIRE cannot be split by a crash (a counter without expiry would never reset).
+        private const string IncrementScript = "local v = redis.call('INCRBY', KEYS[1], ARGV[1]) "
+                                             + "if redis.call('TTL', KEYS[1]) < 0 then redis.call('EXPIRE', KEYS[1], ARGV[2]) end "
+                                             + "return v";
+
+        public async Task<long> IncrementAsync(string key, TimeSpan expiration, long by = 1)
+        {
+            try
+            {
+                var result = await _database.ScriptEvaluateAsync(IncrementScript, [key], [by, (long)Math.Ceiling(expiration.TotalSeconds)]);
+                return (long)result;
+            }
+            catch (Exception ex) when (ex is RedisException or TimeoutException)
+            {
+                _logger.LogWarning(ex, "Redis is unavailable, INCRBY {Key} skipped", key);
+                return 0;
+            }
+        }
+
         public async Task SetIfNotExistsAsync<T>(string key, T value, TimeSpan? expiry = null)
         {
             try

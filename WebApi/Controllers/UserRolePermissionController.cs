@@ -5,7 +5,6 @@ using Application.Features.UserRolePermissions.Queries.GetOne;
 using Application.Interfaces.Auths;
 using Application.Models.Dtos.UserRolePermissions;
 using Domain.Enums.Actions;
-using Domain.Enums.Permissions;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

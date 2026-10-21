@@ -30,10 +30,11 @@ namespace Domain.Behaviours
 
             string input = value.ToString()!;
 
-            if (!Regex.IsMatch(input, @"^\d{9,14}$"))
+            // INN of an organisation has 9 digits, PINFL of a person 14; nothing in between exists.
+            if (!Regex.IsMatch(input, @"^(\d{9}|\d{14})$"))
             {
                 return new ValidationResult(
-                    "Value must contain only digits and be between 9 and 14 characters long."
+                    "Value must be 9 digits (INN) or 14 digits (PINFL)."
                 );
             }
 

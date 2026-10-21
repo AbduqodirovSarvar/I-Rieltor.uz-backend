@@ -24,5 +24,11 @@ namespace Application.Interfaces.Repositories
         /// in case the transaction rolls back. Outside a transaction there is nothing to undo, so it is ignored.
         /// </summary>
         void OnRollback(Func<Task> callback);
+
+        /// <summary>
+        /// Queues work for when COMMIT fails and nobody knows whether it went through (e.g. dropping a cache key, which
+        /// is right either way). Outside a transaction it is ignored. Its failure is logged, never thrown.
+        /// </summary>
+        void OnCommitOutcomeUnknown(Func<Task> callback);
     }
 }

@@ -44,7 +44,7 @@ namespace WebApi.Controllers
             // A challenge is single-use; proxies and browsers must not cache it.
             Response.Headers.CacheControl = "no-store";
 
-            var result = await _mediator.Send(new GetEimzoChallengeQuery());
+            var result = await _mediator.Send(new GetEimzoChallengeQuery(), HttpContext.RequestAborted);
             return Ok(result);
         }
 
@@ -118,7 +118,7 @@ namespace WebApi.Controllers
         [DisableRateLimiting]
         public async Task<IActionResult> Me()
         {
-            var result = await _mediator.Send(new GetCurrentUserQuery());
+            var result = await _mediator.Send(new GetCurrentUserQuery(), HttpContext.RequestAborted);
             return Ok(result);
         }
 

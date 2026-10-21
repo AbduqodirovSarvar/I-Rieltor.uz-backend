@@ -41,7 +41,6 @@ namespace WebApi.Extentions
                     return new Microsoft.AspNetCore.Mvc.BadRequestObjectResult(Application.Models.Results.ResponseModel<object>.Fail(
                         "One or more validation errors occurred.", errors, System.Net.HttpStatusCode.BadRequest));
                 });
-            builder.Services.AddOpenApi();
             builder.AddUploadSizeLimits();
         }
 
@@ -139,6 +138,15 @@ namespace WebApi.Extentions
             services.AddRateLimiter(options =>
             {
                 options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+                // Same ResponseModel shape as every other error, with Retry-After so a client knows when to try again.
+                options.OnRejected = async (context, cancellationToken) =>
+                {
+                    if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+                        context.HttpContext.Response.Headers.RetryAfter =
+                            ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                    await context.HttpContext.Response.WriteAsJsonAsync(Application.Models.Results.ResponseModel<object>.Fail(
+                        "Too many requests. Try again later.", statusCode: HttpStatusCode.TooManyRequests), cancellationToken);
+                };
                 options.AddPolicy(AuthRateLimitPolicy, httpContext =>
                     RateLimitPartition.GetFixedWindowLimiter(
                         ClientPartitionKey(httpContext),

@@ -53,15 +53,34 @@ namespace Application.Services.EntityServices
                 throw new ForbiddenException("You do not have permission to delete this entity.");
 
             var target = await _repository.GetAsync(x => x.Id == id, cancellationToken)
-                                ?? throw new KeyNotFoundException("Entity not found");
+                                ?? throw new NotFoundException("Entity not found");
             await _accessGuard.EnsureCanDeleteUserAsync(target, cancellationToken);
 
             return await _unitOfWork.ExecuteAsync(async () =>
             {
+                await EnsureNotLastSuperAdminAsync(target, cancellationToken);
                 var deleted = await _repository.DeleteAsync(target, cancellationToken);
                 await _refreshTokenRepository.RevokeAllActiveAsync(id, DateTime.UtcNow, cancellationToken);
                 return ResponseModel<bool>.Ok(deleted);
             }, cancellationToken);
+        }
+
+        /// <summary>
+        /// Must run inside the transaction that removes the user or their role. The SUPER_ADMIN role row is locked
+        /// exclusively first, so two administrators removing each other at the same moment are serialized and the
+        /// second one sees that nobody else is left.
+        /// </summary>
+        private async Task EnsureNotLastSuperAdminAsync(User target, CancellationToken cancellationToken)
+        {
+            if (target.UserRoleId is not { } roleId)
+                return;
+            var role = await _userRoleRepository.GetAsync(r => r.Id == roleId, cancellationToken);
+            if (!string.Equals(role?.Name, SystemRoles.SuperAdmin, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            await _userRoleRepository.LockAsync(roleId, exclusive: true, cancellationToken);
+            if (!await _userRepository.AnyAsync(u => u.Id != target.Id && u.UserRoleId == roleId, cancellationToken))
+                throw new ForbiddenException("The last SUPER_ADMIN cannot be removed.");
         }
 
         /// <summary>
@@ -74,17 +93,20 @@ namespace Application.Services.EntityServices
                 throw new ForbiddenException("You do not have permission to assign roles.");
 
             var target = await _repository.GetAsync(x => x.Id == userId, cancellationToken)
-                                ?? throw new KeyNotFoundException("User not found");
+                                ?? throw new NotFoundException("User not found");
             if (!await _userRoleRepository.AnyAsync(r => r.Id == userRoleId, cancellationToken))
-                throw new KeyNotFoundException("Role not found");
+                throw new NotFoundException("Role not found");
 
             await _accessGuard.EnsureCanAssignRoleAsync(target, userRoleId, cancellationToken);
 
             return await _unitOfWork.ExecuteAsync(async () =>
             {
+                if (target.UserRoleId != userRoleId)
+                    await EnsureNotLastSuperAdminAsync(target, cancellationToken);
+
                 // Shared lock: a delete of this role waits until the user has it (and then refuses with 409).
                 if (!await _userRoleRepository.LockAsync(userRoleId, exclusive: false, cancellationToken))
-                    throw new KeyNotFoundException("Role not found");
+                    throw new NotFoundException("Role not found");
 
                 target.UserRoleId = userRoleId;
                 var result = await _repository.UpdateAsync(target, cancellationToken);
@@ -98,11 +120,14 @@ namespace Application.Services.EntityServices
             if (!await _permissionService.Check($"{OperationType.CREATE}_{entityTypeName}"))
                 throw new ForbiddenException("You do not have permission to create this entity.");
 
-            if (await _userRepository.ExistsWithAnyAsync(entityCreateDto.Login, entityCreateDto.Email, entityCreateDto.INNPINFL, entityCreateDto.Phone, cancellationToken: cancellationToken))
-                throw new ConflictException("User with this login, email, INNPINFL or phone already exists.");
-
+            // Before the duplicate check: otherwise 409 vs 403 would tell a caller who may not set a PINFL whether it is registered.
             if (!string.IsNullOrWhiteSpace(entityCreateDto.INNPINFL))
                 await _accessGuard.EnsureCanSetIdentifierAsync(cancellationToken);
+            if (SystemRoles.IsReservedLogin(entityCreateDto.Login))
+                throw new BadRequestException("This login is reserved.");
+
+            if (await _userRepository.ExistsWithAnyAsync(entityCreateDto.Login, entityCreateDto.Email, entityCreateDto.INNPINFL, entityCreateDto.Phone, cancellationToken: cancellationToken))
+                throw new ConflictException("User with this login, email, INNPINFL or phone already exists.");
 
             var entity = _mapper.Map<User>(entityCreateDto);
             entity.PasswordHash = _hashService.Hash(entityCreateDto.Password);
@@ -122,7 +147,7 @@ namespace Application.Services.EntityServices
                 throw new ForbiddenException("You do not have permission to update this entity.");
 
             var entity = await _repository.GetAsync(x => x.Id == entityUpdateDto.Id, cancellationToken)
-                                ?? throw new KeyNotFoundException("Entity not found");
+                                ?? throw new NotFoundException("Entity not found");
             await _accessGuard.EnsureCanManageUserAsync(entity, cancellationToken);
 
             var dto = entityUpdateDto;
@@ -130,6 +155,18 @@ namespace Application.Services.EntityServices
             if (unknown.Count > 0)
                 throw new BadRequestException($"ClearFields: '{string.Join("', '", unknown)}' cannot be cleared. Allowed: {string.Join(", ", UpdateUserDto.ClearableFields)}.");
             bool Clear(string field) => dto.ClearFields.Contains(field, StringComparer.OrdinalIgnoreCase);
+
+            // Own credentials change only through api/auth/me/*, which need the current password or a confirmation link;
+            // otherwise a stolen access token of an admin would be enough to take the admin account over.
+            if (entity.Id == _currentUserService.UserId
+                && (!string.IsNullOrWhiteSpace(dto.Password)
+                    || (dto.Email != null && !string.Equals(dto.Email.Trim(), entity.Email, StringComparison.OrdinalIgnoreCase))
+                    || (dto.Login != null && !string.Equals(dto.Login, entity.Login, StringComparison.Ordinal))
+                    || Clear(nameof(UpdateUserDto.Email)) || Clear(nameof(UpdateUserDto.Login))))
+                throw new ForbiddenException("Change your own password or email with PUT api/auth/me/password and PUT api/auth/me/email; your login can be changed by another administrator.");
+
+            if (dto.Login != null && !string.Equals(dto.Login, entity.Login, StringComparison.Ordinal) && SystemRoles.IsReservedLogin(dto.Login))
+                throw new BadRequestException("This login is reserved.");
 
             // Changing or removing the PINFL/INN would move someone's E-IMZO sign-in to or away from this account.
             var newIdentifier = Clear(nameof(UpdateUserDto.INNPINFL)) ? null : dto.INNPINFL ?? entity.INNPINFL;

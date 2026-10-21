@@ -32,8 +32,8 @@ namespace Domain.Behaviours
 
             string input = value.ToString()!;
 
-            // E.164: "+", then 10 to 15 digits, e.g. +998901234567. The earlier pattern let a bare code like "+9" pass.
-            const string phonePattern = @"^\+[1-9]\d{9,14}$";
+            // "+", then 10 to 14 digits (at most 15 characters, the column size), e.g. +998901234567.
+            const string phonePattern = @"^\+[1-9]\d{9,13}$";
             return Regex.IsMatch(input, phonePattern);
         }
     }

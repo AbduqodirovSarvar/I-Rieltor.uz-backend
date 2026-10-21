@@ -10,6 +10,7 @@ namespace Application.Models.Requests.Abstractions
     public record BaseGetListQuery
     {
         public const int MaxPageSize = 100;
+        public const int DefaultPageSize = 20;
 
         /// <summary>
         /// Zero-based page number.
@@ -23,7 +24,7 @@ namespace Application.Models.Requests.Abstractions
         /// Items per page; capped so one request cannot load a whole table.
         /// </summary>
         [Range(1, MaxPageSize)]
-        public int PageSize { get; init; } = 20;
+        public int PageSize { get; init; } = DefaultPageSize;
 
         /// <summary>
         /// Case-insensitive text looked for in the entity's searchable fields (name, title, login...).

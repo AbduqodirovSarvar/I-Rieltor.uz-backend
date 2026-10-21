@@ -1,4 +1,5 @@
-﻿using Application.Exceptions;
+﻿using Application.Authorization;
+using Application.Exceptions;
 using Application.Interfaces.Auths;
 using Application.Interfaces.EntityServices;
 using Application.Interfaces.Repositories;
@@ -26,7 +27,8 @@ namespace Application.Services.EntityServices
                            IMapper mapper,
                            IUserRepository userRepository,
                            IUserRolePermissionRepository userRolePermissionRepository,
-                           IUnitOfWork unitOfWork)
+                           IUnitOfWork unitOfWork,
+                           IUserAccessGuard accessGuard)
         : GenericEntityService<UserRole,
                                CreateUserRoleDto,
                                UpdateUserRoleDto,
@@ -36,6 +38,7 @@ namespace Application.Services.EntityServices
         private readonly IUserRepository _userRepository = userRepository;
         private readonly IUserRolePermissionRepository _userRolePermissionRepository = userRolePermissionRepository;
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
+        private readonly IUserAccessGuard _accessGuard = accessGuard;
 
         public override async Task<ResponseModel<UserRoleViewModel>> CreateAsync(CreateUserRoleDto entityCreateDto, CancellationToken cancellationToken = default)
         {
@@ -43,6 +46,8 @@ namespace Application.Services.EntityServices
             if (!await _permissionService.Check($"{OperationType.CREATE}_{entityTypeName}"))
                 throw new ForbiddenException("You do not have permission to create this entity.");
 
+            // " SUPER_ADMIN" would be stored as a different name that looks like the system role.
+            entityCreateDto.Name = entityCreateDto.Name.Trim();
             await EnsureNameAllowedAsync(entityCreateDto.Name, null, cancellationToken);
 
             var entity = _mapper.Map<UserRole>(entityCreateDto);
@@ -74,8 +79,10 @@ namespace Application.Services.EntityServices
                 throw new ForbiddenException("You do not have permission to update this entity.");
 
             var entity = await _repository.GetAsync(x => x.Id == entityUpdateDto.Id, cancellationToken)
-                                ?? throw new KeyNotFoundException("Entity not found");
+                                ?? throw new NotFoundException("Entity not found");
+            await _accessGuard.EnsureCanManageRoleAsync(entity.Id, cancellationToken);
 
+            entityUpdateDto.Name = entityUpdateDto.Name.Trim();
             // Registration and the seeder look system roles up by name.
             if (SystemRoles.IsSystemRole(entity.Name) && !string.Equals(entity.Name, entityUpdateDto.Name, StringComparison.Ordinal))
                 throw new BadRequestException($"System role '{entity.Name}' cannot be renamed.");
@@ -96,17 +103,18 @@ namespace Application.Services.EntityServices
                 throw new ForbiddenException("You do not have permission to delete this entity.");
 
             var entity = await _repository.GetAsync(x => x.Id == id, cancellationToken)
-                                ?? throw new KeyNotFoundException("Entity not found");
+                                ?? throw new NotFoundException("Entity not found");
 
             if (SystemRoles.IsSystemRole(entity.Name))
                 throw new BadRequestException($"System role '{entity.Name}' cannot be deleted.");
+            await _accessGuard.EnsureCanManageRoleAsync(entity.Id, cancellationToken);
 
             // The role and its permissions go together; the database no longer cascades.
             return await _unitOfWork.ExecuteAsync(async () =>
             {
                 // Locked first, so a user cannot be given the role between this check and the delete.
                 if (!await _roleRepository.LockAsync(id, exclusive: true, cancellationToken))
-                    throw new KeyNotFoundException("Entity not found");
+                    throw new NotFoundException("Entity not found");
 
                 // Soft delete keeps the row, so the FK no longer stops this; deleted users do not count.
                 if (await _userRepository.AnyAsync(u => u.UserRoleId == id, cancellationToken))
@@ -131,7 +139,7 @@ namespace Application.Services.EntityServices
             var entity = await _repository.Query(x => x.Id == id, cancellationToken)
                                 .Include(x => x.Permissions)
                                 .FirstOrDefaultAsync(cancellationToken)
-                                ?? throw new KeyNotFoundException("Entity not found");
+                                ?? throw new NotFoundException("Entity not found");
 
             return ResponseModel<UserRoleViewModel?>.Ok(_mapper.Map<UserRoleViewModel>(entity));
         }

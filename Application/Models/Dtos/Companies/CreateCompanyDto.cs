@@ -39,9 +39,9 @@ namespace Application.Models.Dtos.Companies
         [MaxLength(150)]
         public string? Email { get; set; }
         public IFormFile? Logo { get; set; }
-        [Range(-90, 90)]
+        [Range(-90.0, 90.0)]
         public decimal? Latitude { get; set; }
-        [Range(-180, 180)]
+        [Range(-180.0, 180.0)]
         public decimal? Longitude { get; set; }
     }
 }

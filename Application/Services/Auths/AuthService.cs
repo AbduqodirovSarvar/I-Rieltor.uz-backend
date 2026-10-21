@@ -76,15 +76,17 @@ namespace Application.Services.Auths
                                     .ThenInclude(x => x!.Permissions)
                                 .FirstOrDefaultAsync(cancellationToken);
 
-            if (user == null)
+            // An account without a password (E-IMZO only) costs the same hash work as an unknown login, so the response
+            // time does not tell whether an account exists for a login, email or PINFL.
+            if (user == null || string.IsNullOrEmpty(user.PasswordHash))
             {
                 _hashService.Verify(loginDto.Password, _dummyPasswordHash ??= _hashService.Hash(Guid.NewGuid().ToString()));
-                throw new UnauthorizedAccessException(InvalidCredentialsMessage);
+                throw new UnauthenticatedException(InvalidCredentialsMessage);
             }
 
             if (!_hashService.Verify(loginDto.Password, user.PasswordHash))
             {
-                throw new UnauthorizedAccessException(InvalidCredentialsMessage);
+                throw new UnauthenticatedException(InvalidCredentialsMessage);
             }
 
             return await IssueTokensAsync(user, cancellationToken);
@@ -92,6 +94,9 @@ namespace Application.Services.Auths
 
         public async Task<bool> RegisterAsync(RegisterDto registerDto, CancellationToken cancellationToken)
         {
+            if (SystemRoles.IsReservedLogin(registerDto.Login))
+                throw new BadRequestException("This login is reserved.");
+
             if (await _userRepository.ExistsWithAnyAsync(registerDto.Login, registerDto.Email, null, registerDto.Phone, cancellationToken: cancellationToken))
             {
                 throw new ConflictException("User with this login, email or phone already exists.");
@@ -122,7 +127,7 @@ namespace Application.Services.Auths
                                     .Include(x => x.UserRole)
                                         .ThenInclude(x => x!.Permissions)
                                     .FirstOrDefaultAsync(cancellationToken)
-                                    ?? throw new UnauthorizedAccessException("User not registered.");
+                                    ?? throw new UnauthenticatedException("User not registered.");
 
             return await IssueTokensAsync(user, cancellationToken);
         }
@@ -151,7 +156,7 @@ namespace Application.Services.Auths
         {
             var now = DateTime.UtcNow;
             var stored = await _refreshTokenRepository.GetByHashAsync(_tokenService.HashRefreshToken(refreshToken), cancellationToken)
-                            ?? throw new UnauthorizedAccessException(InvalidRefreshTokenMessage);
+                            ?? throw new UnauthenticatedException(InvalidRefreshTokenMessage);
 
             // Rows created before sessions existed have no session values; each counts as its own session.
             var sessionId = stored.SessionId == Guid.Empty ? stored.Id : stored.SessionId;
@@ -159,7 +164,7 @@ namespace Application.Services.Auths
 
             // Expired tokens are refused without side effects, so an old leaked token cannot be used to log anyone out.
             if (stored.ExpiresAt <= now || sessionExpiresAt <= now)
-                throw new UnauthorizedAccessException(InvalidRefreshTokenMessage);
+                throw new UnauthenticatedException(InvalidRefreshTokenMessage);
 
             if (stored.RevokedAt != null)
             {
@@ -168,7 +173,7 @@ namespace Application.Services.Auths
                 // logout or "sign out everywhere" are simply refused.
                 if (stored.ReplacedByTokenId != null && now - stored.RevokedAt.Value > RefreshReuseGracePeriod)
                     await _refreshTokenRepository.RevokeSessionAsync(stored.UserId, sessionId, now, cancellationToken);
-                throw new UnauthorizedAccessException(InvalidRefreshTokenMessage);
+                throw new UnauthenticatedException(InvalidRefreshTokenMessage);
             }
 
             var user = await _userRepository
@@ -176,7 +181,7 @@ namespace Application.Services.Auths
                                 .Include(x => x.UserRole)
                                     .ThenInclude(x => x!.Permissions)
                                 .FirstOrDefaultAsync(cancellationToken)
-                                ?? throw new UnauthorizedAccessException(InvalidRefreshTokenMessage);
+                                ?? throw new UnauthenticatedException(InvalidRefreshTokenMessage);
 
             // Revoking the old token and storing the new one commit together: a failed insert does not sign the user out,
             // and a concurrent request with the same token waits on the row lock and then finds it revoked.
@@ -185,7 +190,7 @@ namespace Application.Services.Auths
                 var newTokenId = Guid.CreateVersion7();
                 // Another request exchanged the same token a moment earlier (second tab, retry): refuse this one only.
                 if (!await _refreshTokenRepository.TryRevokeAsync(stored.Id, newTokenId, now, cancellationToken))
-                    throw new UnauthorizedAccessException(InvalidRefreshTokenMessage);
+                    throw new UnauthenticatedException(InvalidRefreshTokenMessage);
 
                 return await IssueTokensAsync(user, cancellationToken, new SessionToken(newTokenId, sessionId, sessionExpiresAt));
             }, cancellationToken);
@@ -238,7 +243,7 @@ namespace Application.Services.Auths
         {
             var result = await _eimzoService.AuthenticateAsync(signedChallenge, cancellationToken);
             if (!result.IsSuccess || result.Certificate == null)
-                throw new UnauthorizedAccessException($"E-IMZO: {result.Message}");
+                throw new UnauthenticatedException($"E-IMZO: {result.Message}");
 
             return result.Certificate;
         }
@@ -251,7 +256,7 @@ namespace Application.Services.Auths
         {
             var identifier = certificate.IsLegalEntity ? certificate.LegalInn : certificate.Pinfl;
             if (string.IsNullOrWhiteSpace(identifier))
-                throw new UnauthorizedAccessException("E-IMZO: the certificate contains neither PINFL nor organisation INN.");
+                throw new UnauthenticatedException("E-IMZO: the certificate contains neither PINFL nor organisation INN.");
 
             return identifier;
         }
@@ -324,7 +329,7 @@ namespace Application.Services.Auths
             var identifier = GetEimzoAccountIdentifier(certificate);
 
             var user = await _userRepository.GetAsync(x => x.INNPINFL == identifier, cancellationToken)
-                            ?? throw new KeyNotFoundException("User not registered.");
+                            ?? throw new NotFoundException("User not registered.");
 
             user.PasswordHash = _hashService.Hash(resetPasswordDto.NewPassword);
 
@@ -364,7 +369,6 @@ namespace Application.Services.Auths
                     await _userRepository.UpdateAsync(user, cancellationToken);
                 }
 
-                await EnsureConfirmationEmailAllowedAsync(user.Id, user.Email!);
                 await SendConfirmationLinkAsync(user, cancellationToken);
                 return true;
             }, cancellationToken);
@@ -410,7 +414,6 @@ namespace Application.Services.Auths
             if (user.EmailConfirmedAt != null)
                 throw new BadRequestException("This email is already confirmed.");
 
-            await EnsureConfirmationEmailAllowedAsync(user.Id, user.Email!);
             await SendConfirmationLinkAsync(user, cancellationToken);
             return true;
         }
@@ -438,13 +441,31 @@ namespace Application.Services.Auths
         private async Task<User> GetSignedInUserAsync(CancellationToken cancellationToken)
         {
             var userId = _currentUserService.UserId
-                         ?? throw new UnauthorizedAccessException("Sign in first.");
+                         ?? throw new UnauthenticatedException("Sign in first.");
             // A user deleted after the access token was issued.
             return await _userRepository.GetAsync(x => x.Id == userId, cancellationToken)
-                   ?? throw new UnauthorizedAccessException("Sign in first.");
+                   ?? throw new UnauthenticatedException("Sign in first.");
         }
 
+        /// <summary>
+        /// The limits are taken before sending (<see cref="ReserveConfirmationEmailAsync"/>), so parallel requests cannot
+        /// all pass a check made before any of them has sent; a failed send gives them back.
+        /// </summary>
         private async Task SendConfirmationLinkAsync(User user, CancellationToken cancellationToken)
+        {
+            await ReserveConfirmationEmailAsync(user.Id, user.Email!);
+            try
+            {
+                await SendConfirmationEmailAsync(user, cancellationToken);
+            }
+            catch
+            {
+                await ReleaseConfirmationEmailAsync(user.Id, user.Email!);
+                throw;
+            }
+        }
+
+        private async Task SendConfirmationEmailAsync(User user, CancellationToken cancellationToken)
         {
             var (url, expiresAt) = _emailConfirmationTokenService.CreateLink(user.Id, user.Email!);
             var hours = Math.Max(1, (int)Math.Round((expiresAt - DateTime.UtcNow).TotalHours));
@@ -455,7 +476,6 @@ namespace Application.Services.Auths
                 ["hours"] = hours.ToString()
             });
             await _emailService.SendEmailAsync(user.Email!, EmailTemplates.EmailConfirmationSubject, body, cancellationToken);
-            await RecordConfirmationEmailSentAsync(user.Id, user.Email!);
         }
 
         // Cooldown per address: right after sign-up (link already sent) a mistyped address can still be corrected at once.
@@ -464,21 +484,24 @@ namespace Application.Services.Auths
         private static string DailyKey(Guid userId) => $"v1:emailconfirm:day:{userId}:{DateTime.UtcNow:yyyyMMdd}";
 
         /// <summary>
-        /// The counters live in Redis; when Redis is down they read as zero and only the per-IP limit applies.
+        /// Takes the cooldown (SET NX) and one email of the daily cap (INCR) atomically in Redis.
+        /// When Redis is down both pass and only the per-IP limit applies.
         /// </summary>
-        private async Task EnsureConfirmationEmailAllowedAsync(Guid userId, string email)
+        private async Task ReserveConfirmationEmailAsync(Guid userId, string email)
         {
-            if (await _redisService.ExistsAsync(CooldownKey(userId, email)))
-                throw new TooManyRequestsException("A confirmation email was sent less than a minute ago. Wait a little and try again.");
-            if (await _redisService.GetAsync<int>(DailyKey(userId)) >= ConfirmationEmailsPerDay)
+            if (!await _redisService.TryAcquireAsync(CooldownKey(userId, email), ConfirmationEmailCooldown))
+                throw new TooManyRequestsException("A confirmation email was sent less than a minute ago. Wait a little and try again.", ConfirmationEmailCooldown);
+            if (await _redisService.IncrementAsync(DailyKey(userId), TimeSpan.FromDays(1)) > ConfirmationEmailsPerDay)
+            {
+                await ReleaseConfirmationEmailAsync(userId, email);
                 throw new TooManyRequestsException("Too many confirmation emails today. Try again tomorrow.");
+            }
         }
 
-        private async Task RecordConfirmationEmailSentAsync(Guid userId, string email)
+        private async Task ReleaseConfirmationEmailAsync(Guid userId, string email)
         {
-            await _redisService.SetAsync(CooldownKey(userId, email), 1, ConfirmationEmailCooldown);
-            var sentToday = await _redisService.GetAsync<int>(DailyKey(userId));
-            await _redisService.SetAsync(DailyKey(userId), sentToday + 1, TimeSpan.FromDays(1));
+            await _redisService.RemoveAsync(CooldownKey(userId, email));
+            await _redisService.IncrementAsync(DailyKey(userId), TimeSpan.FromDays(1), -1);
         }
     }
 }

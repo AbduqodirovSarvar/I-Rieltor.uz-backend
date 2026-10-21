@@ -76,7 +76,7 @@ namespace Application.Services.EntityServices
                 throw new ForbiddenException("You do not have permission to create this entity.");
 
             var entity = await _repository.GetAsync(x => x.Id == entityUpdateDto.Id, cancellationToken)
-                                ?? throw new KeyNotFoundException("Entity not found");
+                                ?? throw new NotFoundException("Entity not found");
             _mapper.Map(entityUpdateDto, entity);
 
             var oldLogoFileId = entity.LogoFileId;
@@ -113,7 +113,7 @@ namespace Application.Services.EntityServices
                 throw new ForbiddenException("You do not have permission to create this entity.");
 
             var entity = await _repository.GetAsync(x => x.Id == id, cancellationToken)
-                                ?? throw new KeyNotFoundException("Entity not found");
+                                ?? throw new NotFoundException("Entity not found");
 
             await _repository.DeleteAsync(entity, cancellationToken);
 
@@ -139,7 +139,7 @@ namespace Application.Services.EntityServices
             var entity = await _repository.Query(predicate, cancellationToken)
                                 .Include(x => x.LogoFile)
                                 .FirstOrDefaultAsync(cancellationToken)
-                                ?? throw new KeyNotFoundException("Entity not found");
+                                ?? throw new NotFoundException("Entity not found");
 
             return ResponseModel<CompanyViewModel?>.Ok(_mapper.Map<CompanyViewModel>(entity));
         }
@@ -153,7 +153,7 @@ namespace Application.Services.EntityServices
                                 .Include(x => x.LogoFile)
                                 .OrderBy(x => x.CreatedAt)
                                 .FirstOrDefaultAsync(cancellationToken)
-                                ?? throw new KeyNotFoundException("Company information has not been filled in yet.");
+                                ?? throw new NotFoundException("Company information has not been filled in yet.");
 
             return ResponseModel<PublicCompanyViewModel?>.Ok(_mapper.Map<PublicCompanyViewModel>(entity));
         }

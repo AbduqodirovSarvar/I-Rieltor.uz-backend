@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Application.Models.Requests.Abstractions;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -19,7 +20,7 @@ namespace Application.Interfaces.Repositories.Abstractions
         Task<(List<TEntity> Data, int TotalItems)> GetPaginatedAsync(
             Expression<Func<TEntity, bool>>? predicate = null,
             int pageIndex = 0,
-            int pageSize = 10,
+            int pageSize = BaseGetListQuery.DefaultPageSize,
             Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>>? orderBy = null,
             CancellationToken cancellationToken = default);
         IQueryable<TEntity> Query(Expression<Func<TEntity, bool>>? predicate = null, CancellationToken cancellationToken = default);

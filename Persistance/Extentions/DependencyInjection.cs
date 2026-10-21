@@ -37,7 +37,8 @@ namespace Persistance.Extentions
         {
             services.AddScoped<ICurrentUserService, CurrentUserService>();
             services.AddScoped<IUnitOfWork, UnitOfWork>();
-            services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+            // No open-generic IGenericRepository<>: it would hand out a repository without the per-entity settings
+            // (e.g. IGenericRepository<User> with caching on, putting PasswordHash into Redis).
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IUserRoleRepository, UserRoleRepository>();
             services.AddScoped<IUserRolePermissionRepository, UserRolePermissionRepository>();

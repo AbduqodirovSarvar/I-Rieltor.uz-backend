@@ -3,7 +3,6 @@ using Application.Models.Requests.Abstractions;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using WebApi.Filters.Attributes;
 
 namespace WebApi.Controllers.Abstractions
 {
@@ -25,9 +24,6 @@ namespace WebApi.Controllers.Abstractions
         [HttpPost]
         public virtual async Task<IActionResult> Post([FromForm] TCreateCommand command)
         {
-            if (command == null)
-                return BadRequest("Request cannot be null");
-
             var result = await _mediator.Send(command);
             return Ok(result);
         }
@@ -35,9 +31,6 @@ namespace WebApi.Controllers.Abstractions
         [HttpPut]
         public virtual async Task<IActionResult> Put([FromForm] TUpdateCommand command)
         {
-            if (command == null)
-                return BadRequest("Request cannot be null");
-
             var result = await _mediator.Send(command);
             return Ok(result);
         }
@@ -45,27 +38,23 @@ namespace WebApi.Controllers.Abstractions
         [HttpDelete]
         public virtual async Task<IActionResult> Delete(TDeleteCommand command)
         {
-            if (command == null)
-                return BadRequest("Request cannot be null");
-
             var result = await _mediator.Send(command);
             return Ok(result);
         }
 
         [HttpGet]
+        // Reads take the request token: a client that hung up stops the query. Writes do not (they always finish,
+        // so a dropped connection never leaves half an operation).
         public virtual async Task<IActionResult> Get([FromQuery] TGetQuery request)
         {
-            if (request == null)
-                return BadRequest("Request cannot be null");
-
-            var result = await _mediator.Send(request);
+            var result = await _mediator.Send(request, HttpContext.RequestAborted);
             return Ok(result);
         }
 
         [HttpGet("list")]
         public virtual async Task<IActionResult> GetAll([FromQuery] TGetListQuery request)
         {
-            var result = await _mediator.Send(request);
+            var result = await _mediator.Send(request, HttpContext.RequestAborted);
             return Ok(result);
         }
     }

@@ -14,9 +14,9 @@ namespace Application.Mappings
     {
         public CompanyMappingProfile() 
         {
-            CreateMap<Company, CompanyViewModel>().ReverseMap();
-            CreateMap<CreateCompanyDto, Company>().ReverseMap();
-            CreateMap<UpdateCompanyDto, Company>().ReverseMap();
+            CreateMap<Company, CompanyViewModel>();
+            CreateMap<CreateCompanyDto, Company>();
+            CreateMap<UpdateCompanyDto, Company>();
         }
     }
 }

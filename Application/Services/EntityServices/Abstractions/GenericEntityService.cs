@@ -1,4 +1,5 @@
-﻿using Application.Exceptions;
+﻿using Application.Models.Requests.Abstractions;
+using Application.Exceptions;
 using Application.Interfaces.Auths;
 using Application.Interfaces.EntityServices.Abstractions;
 using Application.Interfaces.Repositories.Abstractions;
@@ -54,7 +55,7 @@ namespace Application.Services.EntityServices.Abstractions
             // Load the stored entity and apply only the DTO fields, so fields the DTO lacks
             // (PasswordHash, CreatedAt, CreatedBy, foreign keys) keep their values.
             var entity = await _repository.GetAsync(x => x.Id == entityUpdateDto.Id, cancellationToken)
-                                ?? throw new KeyNotFoundException("Entity not found");
+                                ?? throw new NotFoundException("Entity not found");
             _mapper.Map(entityUpdateDto, entity);
 
             var result = await _repository.UpdateAsync(entity, cancellationToken)
@@ -70,7 +71,7 @@ namespace Application.Services.EntityServices.Abstractions
                 throw new ForbiddenException("You do not have permission to create this entity.");
 
             var entity = await _repository.GetAsync(x => x.Id == id, cancellationToken)
-                                ?? throw new KeyNotFoundException("Entity not found");
+                                ?? throw new NotFoundException("Entity not found");
 
             return ResponseModel<bool>.Ok(await _repository.DeleteAsync(entity, cancellationToken));
         }
@@ -85,7 +86,7 @@ namespace Application.Services.EntityServices.Abstractions
             return ResponseModel<bool>.Ok(entity != null);
         }
 
-        public virtual async Task<ResponseModel<List<TEntityViewModel>>> GetAllAsync(Expression<Func<TEntity, bool>>? predicate = null, int pageIndex = 0, int pageSize = 10, Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>>? orderBy = null, CancellationToken cancellationToken = default)
+        public virtual async Task<ResponseModel<List<TEntityViewModel>>> GetAllAsync(Expression<Func<TEntity, bool>>? predicate = null, int pageIndex = 0, int pageSize = BaseGetListQuery.DefaultPageSize, Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>>? orderBy = null, CancellationToken cancellationToken = default)
         {
             string entityTypeName = typeof(TEntity).Name.ToUpper();
             if (!await _permissionService.Check($"{OperationType.READ}_{entityTypeName}"))
@@ -105,7 +106,7 @@ namespace Application.Services.EntityServices.Abstractions
                 throw new ForbiddenException("You do not have permission to create this entity.");
 
             var entity = await _repository.GetByIdAsync(id, cancellationToken)
-                                ?? throw new KeyNotFoundException("Entity not found");
+                                ?? throw new NotFoundException("Entity not found");
 
             return ResponseModel<TEntityViewModel?>.Ok(_mapper.Map<TEntityViewModel>(entity));
         }
@@ -117,7 +118,7 @@ namespace Application.Services.EntityServices.Abstractions
                 throw new ForbiddenException("You do not have permission to create this entity.");
 
             var entity = await _repository.GetAsync(predicate, cancellationToken)
-                                ?? throw new KeyNotFoundException("Entity not found");
+                                ?? throw new NotFoundException("Entity not found");
             return ResponseModel<TEntityViewModel?>.Ok(_mapper.Map<TEntityViewModel>(entity));
         }
     }

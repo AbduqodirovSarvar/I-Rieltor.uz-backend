@@ -72,11 +72,19 @@ namespace Persistance.Services.Files
                 if (known.Contains(name) || DateTime.UtcNow - File.GetLastWriteTimeUtc(path) < minAge)
                     continue;
 
-                var category = Path.GetRelativePath(uploads, Path.GetDirectoryName(path)!);
-                var target = Path.Combine(root, "deleted", "orphans", category);
-                Directory.CreateDirectory(target);
-                File.Move(path, Path.Combine(target, name), overwrite: true);
-                moved++;
+                // One locked or unreadable file must not stop the rest of the run.
+                try
+                {
+                    var category = Path.GetRelativePath(uploads, Path.GetDirectoryName(path)!);
+                    var target = Path.Combine(root, "deleted", "orphans", category);
+                    Directory.CreateDirectory(target);
+                    File.Move(path, Path.Combine(target, name), overwrite: true);
+                    moved++;
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    logger.LogWarning(ex, "Orphan upload {Path} could not be moved; it is tried again next run", path);
+                }
             }
 
             if (moved > 0)

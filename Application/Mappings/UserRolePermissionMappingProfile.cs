@@ -14,9 +14,9 @@ namespace Application.Mappings
     {
         public UserRolePermissionMappingProfile()
         {
-            CreateMap<UserRolePermission, UserRolePermissionViewModel>().ReverseMap();
-            CreateMap<CreateUserRolePermissionDto, UserRolePermission>().ReverseMap();
-            CreateMap<UpdateUserRolePermissionDto, UserRolePermission>().ReverseMap();
+            CreateMap<UserRolePermission, UserRolePermissionViewModel>();
+            CreateMap<CreateUserRolePermissionDto, UserRolePermission>();
+            CreateMap<UpdateUserRolePermissionDto, UserRolePermission>();
         }
     }
 }

@@ -25,6 +25,12 @@ namespace Application.Authorization
         /// <summary>Add a permission to, or remove it from, a role.</summary>
         Task EnsureCanChangeRolePermissionAsync(Guid roleId, string permission, CancellationToken cancellationToken = default);
 
+        /// <summary>
+        /// Rename, describe or delete a role: never SUPER_ADMIN or the caller's own role, and only a role whose
+        /// permissions the caller holds all of (SUPER_ADMIN callers pass; system roles are protected by the service).
+        /// </summary>
+        Task EnsureCanManageRoleAsync(Guid roleId, CancellationToken cancellationToken = default);
+
         /// <summary>A PINFL/INN routes E-IMZO sign-in to an account, so only SUPER_ADMIN may set one by hand.</summary>
         Task EnsureCanSetIdentifierAsync(CancellationToken cancellationToken = default);
     }
@@ -102,6 +108,20 @@ namespace Application.Authorization
                 throw new ForbiddenException(Refused);
         }
 
+        public async Task EnsureCanManageRoleAsync(Guid roleId, CancellationToken cancellationToken = default)
+        {
+            var caller = await GetCallerAsync(cancellationToken);
+            if (caller.IsSuperAdmin)
+                return;
+
+            if (caller.RoleId == roleId)
+                throw new ForbiddenException("You cannot change your own role.");
+
+            if (await IsSuperAdminRoleAsync(roleId, cancellationToken)
+                || !(await GetRolePermissionsAsync(roleId, cancellationToken)).IsSubsetOf(caller.Permissions))
+                throw new ForbiddenException(Refused);
+        }
+
         public async Task EnsureCanSetIdentifierAsync(CancellationToken cancellationToken = default)
         {
             if (!(await GetCallerAsync(cancellationToken)).IsSuperAdmin)
@@ -115,9 +135,9 @@ namespace Application.Authorization
             if (_caller != null)
                 return _caller;
 
-            var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("Sign in first.");
+            var userId = currentUserService.UserId ?? throw new UnauthenticatedException("Sign in first.");
             var user = await userRepository.GetAsync(u => u.Id == userId, cancellationToken)
-                       ?? throw new UnauthorizedAccessException("Sign in first.");
+                       ?? throw new UnauthenticatedException("Sign in first.");
 
             return _caller = new Caller(
                 user.Id,

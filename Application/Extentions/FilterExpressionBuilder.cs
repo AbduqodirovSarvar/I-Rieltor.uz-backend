@@ -45,13 +45,6 @@ namespace Application.Extentions
             return combined == null ? null : Expression.Lambda<Func<T, bool>>(combined, param);
         }
 
-        public static Expression<Func<T, bool>>? BuildPredicate<T>(this Dictionary<string, string> filters)
-        {
-            ParameterExpression param = Expression.Parameter(typeof(T), "x");
-            var combined = BuildFilterBody<T>(filters, param);
-            return combined == null ? null : Expression.Lambda<Func<T, bool>>(combined, param);
-        }
-
         /// <summary>
         /// Ordering from <c>SortBy</c>/<c>SortDirection</c>, or null when <c>SortBy</c> is empty (the service then uses its default).
         /// Rows with equal sort values are ordered by Id, so pages do not overlap or skip rows.

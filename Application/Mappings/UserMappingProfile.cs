@@ -15,7 +15,7 @@ namespace Application.Mappings
     {
         public UserMappingProfile()
         {
-            CreateMap<User, UserViewModel>().ReverseMap();
+            CreateMap<User, UserViewModel>();
             CreateMap<CreateUserDto, User>()
                 .ForMember(x => x.PasswordHash, opt => opt.Ignore())
                 .ForMember(x => x.FullName, opt => opt.MapFrom(src => BuildFullName(src.LastName, src.FirstName, src.MiddleName)));

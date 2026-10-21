@@ -25,7 +25,6 @@ namespace WebApi.Extentions
                     c.SwaggerEndpoint("/swagger/v1/swagger.json", "I-Rieltor.uz API V1");
                     c.RoutePrefix = string.Empty;
                 });
-                app.MapOpenApi();
             }
 
             app.UseHttpsRedirection();

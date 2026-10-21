@@ -1,4 +1,5 @@
-﻿using Application.Models.ViewModels.Public;
+﻿using Application.Models.Requests.Abstractions;
+using Application.Models.ViewModels.Public;
 using Application.Exceptions;
 using Application.Interfaces.Auths;
 using Application.Interfaces.EntityServices;
@@ -73,7 +74,7 @@ namespace Application.Services.EntityServices
                 throw new ForbiddenException("You do not have permission to create this entity.");
 
             var entity = await _repository.GetAsync(x => x.Id == entityUpdateDto.Id, cancellationToken)
-                                ?? throw new KeyNotFoundException("Entity not found");
+                                ?? throw new NotFoundException("Entity not found");
             _mapper.Map(entityUpdateDto, entity);
 
             if (entityUpdateDto.File != null)
@@ -104,7 +105,7 @@ namespace Application.Services.EntityServices
                 throw new ForbiddenException("You do not have permission to create this entity.");
 
             var entity = await _repository.GetAsync(x => x.Id == id, cancellationToken)
-                                ?? throw new KeyNotFoundException("Entity not found");
+                                ?? throw new NotFoundException("Entity not found");
 
             await _repository.DeleteAsync(entity, cancellationToken);
 
@@ -127,12 +128,12 @@ namespace Application.Services.EntityServices
             var entity = await _repository.Query(predicate, cancellationToken)
                                 .Include(x => x.UploadedFile)
                                 .FirstOrDefaultAsync(cancellationToken)
-                                ?? throw new KeyNotFoundException("Entity not found");
+                                ?? throw new NotFoundException("Entity not found");
 
             return ResponseModel<SlideViewModel?>.Ok(_mapper.Map<SlideViewModel>(entity));
         }
 
-        public override async Task<ResponseModel<List<SlideViewModel>>> GetAllAsync(Expression<Func<Slide, bool>>? predicate = null, int pageIndex = 0, int pageSize = 10, Func<IQueryable<Slide>, IOrderedQueryable<Slide>>? orderBy = null, CancellationToken cancellationToken = default)
+        public override async Task<ResponseModel<List<SlideViewModel>>> GetAllAsync(Expression<Func<Slide, bool>>? predicate = null, int pageIndex = 0, int pageSize = BaseGetListQuery.DefaultPageSize, Func<IQueryable<Slide>, IOrderedQueryable<Slide>>? orderBy = null, CancellationToken cancellationToken = default)
         {
             string entityTypeName = typeof(Slide).Name.ToUpper();
             if (!await _permissionService.Check($"{OperationType.READ}_{entityTypeName}"))

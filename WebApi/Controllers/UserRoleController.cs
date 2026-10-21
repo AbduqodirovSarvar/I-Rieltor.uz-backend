@@ -4,7 +4,6 @@ using Application.Features.UserRoles.Commands.Update;
 using Application.Features.UserRoles.Queries.GetList;
 using Application.Features.UserRoles.Queries.GetOne;
 using Domain.Enums.Actions;
-using Domain.Enums.Permissions;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
