@@ -31,7 +31,10 @@ namespace Persistance.Data.EntityTypeConfigurations
             builder.Property(u => u.SecondaryPhone)
                    .HasMaxLength(15);
             // Optional: users registered via E-IMZO have no email. PostgreSQL unique indexes allow many NULLs.
+            // citext: comparisons and the unique index ignore letter case, so "A@x.uz" and "a@x.uz" are one address
+            // everywhere (sign-in, duplicate checks, the index) without lower() in every query.
             builder.Property(u => u.Email)
+                   .HasColumnType("citext")
                    .HasMaxLength(150);
             builder.HasIndex(u => u.Email)
                    .IsUnique()

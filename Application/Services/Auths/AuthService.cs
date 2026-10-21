@@ -58,11 +58,12 @@ namespace Application.Services.Auths
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         public async Task<TokenViewModel> LoginAsync(LoginDto loginDto, CancellationToken cancellationToken)
         {
+            var identifier = loginDto.Login.Trim();
             var user = await _userRepository
                                 .Query(x =>
-                                    x.Login == loginDto.Login ||
-                                    x.Email == loginDto.Login ||
-                                    x.INNPINFL == loginDto.Login, cancellationToken)
+                                    x.Login == identifier ||
+                                    x.Email == identifier ||
+                                    x.INNPINFL == identifier, cancellationToken)
                                 .Include(x => x.UserRole)
                                     .ThenInclude(x => x!.Permissions)
                                 .FirstOrDefaultAsync(cancellationToken);
@@ -340,8 +341,8 @@ namespace Application.Services.Auths
                 }
                 else
                 {
-                    var lower = email.ToLowerInvariant();
-                    if (await _userRepository.AnyAsync(u => u.Id != user.Id && u.Email != null && u.Email.ToLower() == lower, cancellationToken))
+                    // Users.Email is citext: the comparison ignores letter case.
+                    if (await _userRepository.AnyAsync(u => u.Id != user.Id && u.Email == email, cancellationToken))
                         throw new ConflictException("This email is used by another account.");
 
                     user.Email = email;

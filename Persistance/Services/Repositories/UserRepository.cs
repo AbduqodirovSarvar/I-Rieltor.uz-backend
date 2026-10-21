@@ -42,7 +42,8 @@ namespace Persistance.Services.Repositories
             CancellationToken cancellationToken = default)
         {
             login = string.IsNullOrWhiteSpace(login) ? null : login;
-            email = string.IsNullOrWhiteSpace(email) ? null : email;
+            // Stored trimmed (User.Email); the citext column compares without letter case.
+            email = string.IsNullOrWhiteSpace(email) ? null : email.Trim();
             innpinfl = string.IsNullOrWhiteSpace(innpinfl) ? null : innpinfl;
             phone = string.IsNullOrWhiteSpace(phone) ? null : phone;
 

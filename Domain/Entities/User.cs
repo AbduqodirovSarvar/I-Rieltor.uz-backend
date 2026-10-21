@@ -71,7 +71,14 @@ namespace Domain.Entities
         /// </summary>
         [Searchable]
         [EmailAddress]
-        public string? Email { get; set; }
+        public string? Email
+        {
+            get => _email;
+            // Bo'sh joylar olib tashlanadi, bo'sh qiymat "email yo'q" (null). Katta-kichik harf farqi
+            // bazada hal qilinadi: ustun turi citext, ya'ni "A@x.uz" va "a@x.uz" bitta manzil.
+            set => _email = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        }
+        private string? _email;
 
         /// <summary>
         /// Email tasdiqlangan vaqt (UTC). Null: email yo'q yoki hali tasdiqlanmagan.

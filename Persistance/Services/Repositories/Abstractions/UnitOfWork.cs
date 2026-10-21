@@ -28,7 +28,6 @@ namespace Persistance.Services.Repositories.Abstractions
             try
             {
                 result = await action();
-                await transaction.CommitAsync(cancellationToken);
             }
             catch
             {
@@ -47,6 +46,25 @@ namespace Persistance.Services.Repositories.Abstractions
                 context.ChangeTracker.Clear();
                 _afterCommit.Clear();
                 await RunAsync(Drain(_onRollback), "rollback");
+                throw;
+            }
+
+            try
+            {
+                // Not the request token: a client hanging up during COMMIT must not turn a commit the server
+                // may already have made into a "rollback" that deletes the new files of committed rows.
+                await transaction.CommitAsync(CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                _depth = 0;
+                // The outcome is unknown (e.g. the connection broke after COMMIT was sent). Undo steps would delete
+                // files the committed rows may point at, and after-commit steps may act on rows that do not exist,
+                // so neither runs: at worst an unreferenced file stays on disk.
+                logger.LogError(ex, "Transaction commit failed; its outcome is unknown, so no rollback or after-commit steps were run");
+                context.ChangeTracker.Clear();
+                _onRollback.Clear();
+                _afterCommit.Clear();
                 throw;
             }
 

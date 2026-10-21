@@ -59,8 +59,11 @@ namespace WebApi.Extentions
         /// </summary>
         private static IServiceCollection AddReverseProxySupport(this IServiceCollection services, IConfiguration configuration)
         {
-            var proxies = configuration.GetSection("ForwardedHeaders:KnownProxies").Get<string[]>() ?? [];
-            var networks = configuration.GetSection("ForwardedHeaders:KnownNetworks").Get<string[]>() ?? [];
+            // Empty entries are skipped, so an environment variable set to "" can switch off a value from .env.
+            var proxies = (configuration.GetSection("ForwardedHeaders:KnownProxies").Get<string[]>() ?? [])
+                .Where(p => !string.IsNullOrWhiteSpace(p)).ToArray();
+            var networks = (configuration.GetSection("ForwardedHeaders:KnownNetworks").Get<string[]>() ?? [])
+                .Where(n => !string.IsNullOrWhiteSpace(n)).ToArray();
 
             // Parsed here, so a typo stops the app at startup instead of silently trusting nobody.
             var knownProxies = proxies.Select(p => IPAddress.TryParse(p, out var ip)

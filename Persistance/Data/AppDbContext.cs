@@ -26,6 +26,8 @@ namespace Persistance.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            // Case-insensitive text for Users.Email (a trusted extension: the database owner may create it).
+            modelBuilder.HasPostgresExtension("citext");
             modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
         }
     }

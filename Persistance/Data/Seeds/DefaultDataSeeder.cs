@@ -1,4 +1,5 @@
-﻿using Application.Interfaces.Auths;
+﻿using Microsoft.Extensions.Logging;
+using Application.Interfaces.Auths;
 using Domain.Behaviours;
 using Domain.Constants;
 using Domain.Entities;
@@ -18,6 +19,9 @@ namespace Persistance.Data.Seeds
     public static class DefaultDataSeeder
     {
         private const string LegacyDefaultPassword = "SuperAdmin@123";
+        private const string BootstrapAdminLogin = "SUPER_ADMIN";
+        // Any constant: instances starting at the same time seed one after another instead of racing on unique indexes.
+        private const long SeedLockKey = 7_212_605_001;
 
         public static async Task SeedAsync(IServiceProvider serviceProvider)
         {
@@ -27,12 +31,14 @@ namespace Persistance.Data.Seeds
             var hashService = scope.ServiceProvider.GetRequiredService<IHashService>();
             var permissionService = scope.ServiceProvider.GetRequiredService<IPermissionService>();
             var adminConfiguration = scope.ServiceProvider.GetRequiredService<IOptions<DefaultAdminConfiguration>>().Value;
+            var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(DefaultDataSeeder));
 
             using var transaction = await context.Database.BeginTransactionAsync();
+            await context.Database.ExecuteSqlRawAsync($"SELECT pg_advisory_xact_lock({SeedLockKey})");
 
             var superAdminRole = await SeedRolesAsync(context);
             await SeedPermissionsAsync(context, superAdminRole, permissionService);
-            await SeedAdminUserAsync(context, superAdminRole, hashService, adminConfiguration);
+            await SeedAdminUserAsync(context, superAdminRole, hashService, adminConfiguration, logger);
 
             await transaction.CommitAsync();
         }
@@ -102,38 +108,52 @@ namespace Persistance.Data.Seeds
             }
         }
 
+        /// <summary>
+        /// Makes sure at least one active user holds SUPER_ADMIN; it does not track one particular account.
+        /// The bootstrap admin may be renamed freely, and the API refuses to delete or demote the last SUPER_ADMIN,
+        /// so the recovery branches below only run after a manual database change.
+        /// </summary>
         private static async Task SeedAdminUserAsync(
             AppDbContext context,
             UserRole role,
             IHashService hashService,
-            DefaultAdminConfiguration adminConfiguration)
+            DefaultAdminConfiguration adminConfiguration,
+            ILogger logger)
         {
-            var admin = await context.Users
-                .FirstOrDefaultAsync(x => x.Login == "SUPER_ADMIN");
-
-            if (admin != null)
+            // Earlier versions seeded a publicly known password; rotate it wherever it is still in use.
+            var bootstrap = await context.Users.FirstOrDefaultAsync(x => x.Login == BootstrapAdminLogin);
+            if (bootstrap != null && hashService.Verify(LegacyDefaultPassword, bootstrap.PasswordHash))
             {
-                // Earlier versions seeded a publicly known password; rotate it if it is still in use.
-                if (hashService.Verify(LegacyDefaultPassword, admin.PasswordHash))
-                {
-                    admin.PasswordHash = hashService.Hash(GetValidatedPassword(adminConfiguration));
-                    await context.SaveChangesAsync();
-                }
+                bootstrap.PasswordHash = hashService.Hash(GetValidatedPassword(adminConfiguration));
+                await context.SaveChangesAsync();
+            }
+
+            if (await context.Users.AnyAsync(x => x.UserRoleId == role.Id))
+                return;
+
+            if (bootstrap != null)
+            {
+                logger.LogWarning("No active SUPER_ADMIN user found; giving the role back to user '{Login}'", BootstrapAdminLogin);
+                bootstrap.UserRoleId = role.Id;
+                await context.SaveChangesAsync();
                 return;
             }
 
-            admin = new User
+            // The configured email may meanwhile belong to someone else; the unique index would stop the app from starting.
+            var email = adminConfiguration.Email;
+            if (!string.IsNullOrWhiteSpace(email) && await context.Users.AnyAsync(x => x.Email == email))
+                email = null;
+
+            logger.LogWarning("No active SUPER_ADMIN user found; creating user '{Login}' with DefaultAdmin__Password", BootstrapAdminLogin);
+            await context.Users.AddAsync(new User
             {
                 FullName = "Super Administrator",
-                Login = "SUPER_ADMIN",
-                Email = adminConfiguration.Email,
-                Phone = "+998900000000",
+                Login = BootstrapAdminLogin,
+                Email = email,
                 Type = ClientType.NONE,
                 UserRoleId = role.Id,
                 PasswordHash = hashService.Hash(GetValidatedPassword(adminConfiguration))
-            };
-
-            await context.Users.AddAsync(admin);
+            });
             await context.SaveChangesAsync();
         }
 
