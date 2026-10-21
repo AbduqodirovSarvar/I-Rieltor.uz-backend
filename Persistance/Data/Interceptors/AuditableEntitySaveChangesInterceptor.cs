@@ -67,6 +67,8 @@ namespace Persistance.Data.Interceptors
                     // Creation audit is immutable, even when an update marks every column as modified.
                     entry.Property(x => x.CreatedAt).IsModified = false;
                     entry.Property(x => x.CreatedBy).IsModified = false;
+                    // Only a delete may write IsDeleted; an update of a stale copy must not bring a deleted row back.
+                    entry.Property(x => x.IsDeleted).IsModified = false;
 
                     entry.Entity.UpdatedBy = currentUserService?.UserId;
                     entry.Entity.UpdatedAt = DateTime.UtcNow;

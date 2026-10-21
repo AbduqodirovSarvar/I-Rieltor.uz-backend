@@ -28,6 +28,8 @@ namespace WebApi.Handlers
                     => (HttpStatusCode.NotFound, exception.Message),
                 ConflictException
                     => (HttpStatusCode.Conflict, exception.Message),
+                DbUpdateConcurrencyException
+                    => (HttpStatusCode.Conflict, "The record was changed or deleted by someone else meanwhile. Reload it and try again."),
                 DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } }
                     => (HttpStatusCode.Conflict, "A record with the same unique value already exists."),
                 DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.ForeignKeyViolation } }

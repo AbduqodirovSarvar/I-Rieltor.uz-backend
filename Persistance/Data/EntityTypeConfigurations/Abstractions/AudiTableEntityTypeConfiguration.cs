@@ -28,6 +28,9 @@ namespace Persistance.Data.EntityTypeConfigurations.Abstractions
             // Deletes are turned into IsDeleted = true by AuditableEntitySaveChangesInterceptor;
             // every query, including Include and navigation subqueries, skips those rows.
             builder.HasQueryFilter(SoftDeleteFilter, e => !e.IsDeleted);
+            // Npgsql maps a uint row version to the xmin system column: every UPDATE/DELETE is sent with
+            // "WHERE xmin = <loaded value>", so a row changed or soft-deleted in between is not overwritten.
+            builder.Property(e => e.Version).IsRowVersion();
         }
     }
 }

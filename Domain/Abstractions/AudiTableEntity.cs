@@ -35,5 +35,12 @@ namespace Domain.Abstractions
         /// lekin bazadan jismonan o'chirilmaydi.
         /// </summary>
         public bool IsDeleted { get; set; } = false;
+
+        /// <summary>
+        /// Yozuv versiyasi (PostgreSQL'ning <c>xmin</c> tizim ustuni, alohida ustun yaratilmaydi).
+        /// Har o'zgarishda baza o'zi yangilaydi. Saqlashda yuklangandagi qiymat bilan solishtiriladi:
+        /// yozuvni orada boshqa so'rov o'zgartirgan yoki o'chirgan bo'lsa saqlash rad etiladi (409).
+        /// </summary>
+        public uint Version { get; set; }
     }
 }
