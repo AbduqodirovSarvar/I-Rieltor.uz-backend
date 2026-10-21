@@ -12,6 +12,8 @@ namespace WebApi.Extentions
     {
         public static async Task AddWebAppExtention(this WebApplication app)
         {
+            // First: everything after it (rate limits, logging, HTTPS redirect, E-IMZO X-Real-IP) must see the real client.
+            app.UseForwardedHeaders();
             app.UseExceptionHandler();
 
             // API documentation is exposed only on developer machines.

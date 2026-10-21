@@ -9,11 +9,11 @@ using Persistance.Data;
 
 #nullable disable
 
-namespace Persistance.Persistance.Data
+namespace Persistance.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20251222074056_Initial3")]
-    partial class Initial3
+    [Migration("20251223132442_Initial4")]
+    partial class Initial4
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -24,6 +24,74 @@ namespace Persistance.Persistance.Data
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("Domain.Entities.Company", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal?>("Latitude")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("Location")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("LogoFileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("Longitude")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("Mission")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PhoneNumber")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PhoneNumber2")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LogoFileId");
+
+                    b.ToTable("Companies");
+                });
 
             modelBuilder.Entity("Domain.Entities.Slide", b =>
                 {
@@ -291,6 +359,15 @@ namespace Persistance.Persistance.Data
                         .IsUnique();
 
                     b.ToTable("UserRolePermissions");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Company", b =>
+                {
+                    b.HasOne("Domain.Entities.UploadedFile", "LogoFile")
+                        .WithMany()
+                        .HasForeignKey("LogoFileId");
+
+                    b.Navigation("LogoFile");
                 });
 
             modelBuilder.Entity("Domain.Entities.Slide", b =>
