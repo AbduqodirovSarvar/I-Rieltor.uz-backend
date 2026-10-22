@@ -1,5 +1,5 @@
 using Application.Exceptions;
-using Application.Extentions;
+using Application.Extensions;
 using Application.Interfaces.Auths;
 using Application.Interfaces.EntityServices;
 using Application.Interfaces.Notifications;

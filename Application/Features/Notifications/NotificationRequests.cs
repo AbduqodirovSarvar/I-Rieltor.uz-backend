@@ -1,5 +1,5 @@
 using Application.Exceptions;
-using Application.Extentions;
+using Application.Extensions;
 using Application.Features.Abstractions.Queries.Interfaces;
 using Application.Interfaces.Auths;
 using Application.Interfaces.Repositories;

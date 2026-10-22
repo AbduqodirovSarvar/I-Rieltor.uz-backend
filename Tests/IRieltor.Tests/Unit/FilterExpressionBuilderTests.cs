@@ -1,5 +1,5 @@
 using Application.Exceptions;
-using Application.Extentions;
+using Application.Extensions;
 using Application.Models.Requests.Abstractions;
 using Domain.Entities;
 

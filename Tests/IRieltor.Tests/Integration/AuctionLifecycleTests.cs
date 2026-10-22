@@ -3,7 +3,7 @@ using Domain.Entities;
 using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Persistance.Data;
+using Persistence.Data;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;

@@ -11,7 +11,7 @@ namespace Domain.Entities
     /// <summary>
     /// Sayt bosh sahifasidagi slayder (karusel) elementi.
     /// </summary>
-    public class Slide : AudiTableEntity
+    public class Slide : AuditableEntity
     {
         /// <summary>
         /// Slayddagi asosiy sarlavha.

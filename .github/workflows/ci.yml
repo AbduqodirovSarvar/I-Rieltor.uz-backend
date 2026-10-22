@@ -34,7 +34,7 @@ jobs:
       - name: Migrations are up to date
         run: |
           dotnet tool install --global dotnet-ef --version 10.0.13
-          dotnet ef migrations has-pending-model-changes -p Persistance -s WebApi --no-build --configuration Release
+          dotnet ef migrations has-pending-model-changes -p Persistence -s WebApi --no-build --configuration Release
         env:
           # Design-time only; nothing connects to it.
           ConnectionStrings__PostgreSqlConnection: Host=localhost;Database=ci;Username=ci;Password=ci

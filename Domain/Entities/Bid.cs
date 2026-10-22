@@ -4,9 +4,9 @@ namespace Domain.Entities
 {
     /// <summary>
     /// Savdodagi taklif. O'zgartirilmaydi va o'chirilmaydi: savdo tarixi shu.
-    /// Taklif vaqti — <see cref="AudiTableEntity.CreatedAt"/>, beruvchi — <see cref="ParticipantId"/>.
+    /// Taklif vaqti — <see cref="AuditableEntity.CreatedAt"/>, beruvchi — <see cref="ParticipantId"/>.
     /// </summary>
-    public class Bid : AudiTableEntity
+    public class Bid : AuditableEntity
     {
         /// <summary>
         /// Auksion Id'si (FK).

@@ -1,8 +1,8 @@
 using Application.Behaviours;
 using Application.Exceptions;
 using Microsoft.Extensions.Options;
-using Persistance.Models.ConfigModels;
-using Persistance.Services.Auths;
+using Infrastructure.Models.ConfigModels;
+using Infrastructure.Services.Auths;
 using System.ComponentModel.DataAnnotations;
 
 namespace IRieltor.Tests.Unit

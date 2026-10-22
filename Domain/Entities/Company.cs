@@ -12,7 +12,7 @@ namespace Domain.Entities
     /// <summary>
     /// Sayt egasi bo'lgan kompaniya haqidagi ma'lumot ("Biz haqimizda" va "Aloqa" sahifalari uchun).
     /// </summary>
-    public class Company : AudiTableEntity
+    public class Company : AuditableEntity
     {
         /// <summary>
         /// Kompaniya nomi.

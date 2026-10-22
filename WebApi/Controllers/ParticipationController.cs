@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using WebApi.Controllers.Abstractions;
-using WebApi.Extentions;
+using WebApi.Extensions;
 
 namespace WebApi.Controllers
 {
@@ -29,13 +29,13 @@ namespace WebApi.Controllers
 
         /// <summary>Applies with the signed text (409 after the deadline or when already applied; 403 for a key that is not yours).</summary>
         [HttpPost("apply")]
-        [EnableRateLimiting(DepencyInjection.SessionRateLimitPolicy)]
+        [EnableRateLimiting(WebApiDependencyInjection.SessionRateLimitPolicy)]
         public async Task<IActionResult> Apply([FromBody] ApplyCommand command)
             => Ok(await _mediator.Send(command));
 
         /// <summary>Same, with the text signed on the phone (E-IMZO Mobile / ID-card).</summary>
         [HttpPost("apply-mobile")]
-        [EnableRateLimiting(DepencyInjection.SessionRateLimitPolicy)]
+        [EnableRateLimiting(WebApiDependencyInjection.SessionRateLimitPolicy)]
         public async Task<IActionResult> ApplyMobile([FromBody] ApplyMobileCommand command)
             => Ok(await _mediator.Send(command));
 

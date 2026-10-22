@@ -14,7 +14,7 @@ namespace Domain.Entities
     /// Tizim foydalanuvchisi: jismoniy shaxs, yuridik shaxs yoki administrator.
     /// Shaxsiy va aloqa ma'lumotlari, kirish ma'lumotlari va roli shu yerda saqlanadi.
     /// </summary>
-    public class User : AudiTableEntity
+    public class User : AuditableEntity
     {
         /// <summary>
         /// Mijoz turi: jismoniy shaxs (INDIVIDUAL), yuridik shaxs (LEGAL) yoki aniqlanmagan (NONE).

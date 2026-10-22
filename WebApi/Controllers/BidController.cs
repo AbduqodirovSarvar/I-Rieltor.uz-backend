@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using WebApi.Controllers.Abstractions;
-using WebApi.Extentions;
+using WebApi.Extensions;
 
 namespace WebApi.Controllers
 {
@@ -19,7 +19,7 @@ namespace WebApi.Controllers
         /// </summary>
         [Authorize]
         [HttpPost]
-        [EnableRateLimiting(DepencyInjection.BidRateLimitPolicy)]
+        [EnableRateLimiting(WebApiDependencyInjection.BidRateLimitPolicy)]
         public async Task<IActionResult> Place([FromBody] PlaceBidCommand command)
             => Ok(await _mediator.Send(command));
 

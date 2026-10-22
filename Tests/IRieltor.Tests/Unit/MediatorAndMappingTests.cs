@@ -1,4 +1,4 @@
-using Application.Extentions;
+using Application.Extensions;
 using Application.Interfaces.Files;
 using Application.Messaging;
 using Application.Models.Dtos.Users;

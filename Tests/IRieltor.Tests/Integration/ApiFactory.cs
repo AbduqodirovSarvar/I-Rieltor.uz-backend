@@ -79,6 +79,7 @@ namespace IRieltor.Tests.Integration
                 ["Payments__Click__MerchantId"] = "777",
                 ["Payments__Click__SecretKey"] = ClickSecret,
                 ["Payments__BankTransfer__Instructions"] = "Test Bank, hisob 20208000123456789, MFO 00014",
+                ["Payments__CardTransfer__Instructions"] = "Karta 8600 1234 5678 9012, Test Egasi",
                 ["Payments__ReturnUrl"] = "https://i-rieltor.test/payment/result",
                 // One in-memory hub per test host is enough; the Redis backplane is exercised separately.
                 ["SignalR__RedisBackplane"] = "false",

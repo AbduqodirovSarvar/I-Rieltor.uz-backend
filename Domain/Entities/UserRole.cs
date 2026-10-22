@@ -11,7 +11,7 @@ namespace Domain.Entities
     /// <summary>
     /// Foydalanuvchi roli (masalan SUPER_ADMIN, DEFAULT_USER). Ruxsatlarni bir guruhga jamlaydi.
     /// </summary>
-    public class UserRole : AudiTableEntity
+    public class UserRole : AuditableEntity
     {
         /// <summary>
         /// Rolning noyob nomi (masalan "SUPER_ADMIN").

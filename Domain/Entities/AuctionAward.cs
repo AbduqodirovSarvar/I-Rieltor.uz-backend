@@ -7,7 +7,7 @@ namespace Domain.Entities
     /// Obyektni sotib olish taklifi: 1-o'rin (g'olib) va, g'olib voz kechsa yoki to'lamasa, 2-o'rin.
     /// Bir auksionda bir vaqtda faqat bitta faol (taklif qilingan yoki qabul qilingan) taklif bo'ladi.
     /// </summary>
-    public class AuctionAward : AudiTableEntity
+    public class AuctionAward : AuditableEntity
     {
         /// <summary>
         /// Natija Id'si (FK).

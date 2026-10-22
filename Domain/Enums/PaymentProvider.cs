@@ -22,6 +22,10 @@ namespace Domain.Enums
         /// </summary>
         BANK_TRANSFER,
         /// <summary>
+        /// Kartaga o'tkazma (karta raqamiga); admin tasdiqlaydi.
+        /// </summary>
+        CARD_TRANSFER,
+        /// <summary>
         /// Admin qo'lda kiritgan.
         /// </summary>
         MANUAL

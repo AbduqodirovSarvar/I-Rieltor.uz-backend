@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using System.ComponentModel.DataAnnotations;
 using WebApi.Controllers.Abstractions;
-using WebApi.Extentions;
+using WebApi.Extensions;
 
 namespace WebApi.Controllers
 {
@@ -23,7 +23,7 @@ namespace WebApi.Controllers
     {
         /// <summary>Uploads a document (multipart form): pdf, png, jpg or docx, up to 10 MB.</summary>
         [HttpPost]
-        [EnableRateLimiting(DepencyInjection.SessionRateLimitPolicy)]
+        [EnableRateLimiting(WebApiDependencyInjection.SessionRateLimitPolicy)]
         public async Task<IActionResult> Upload([FromForm] UploadPrivateDocumentCommand command)
             => Ok(await _mediator.Send(command));
 

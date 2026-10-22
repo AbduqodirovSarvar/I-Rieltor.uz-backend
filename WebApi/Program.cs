@@ -1,4 +1,4 @@
-using WebApi.Extentions;
+using WebApi.Extensions;
 
 // Docker HEALTHCHECK: the runtime image has no curl, so the app checks itself (see HealthProbe).
 if (args.Length > 0 && args[0] == HealthProbe.Argument)
@@ -8,11 +8,11 @@ DotEnvLoader.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.AdApiDepencies();
+builder.AddApiDependencies();
 
 var app = builder.Build();
 
-await app.AddWebAppExtention();
+await app.AddWebAppExtension();
 
 app.Run();
 return 0;

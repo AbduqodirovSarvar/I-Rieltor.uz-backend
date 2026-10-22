@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 namespace Application.Interfaces.EntityServices.Abstractions
 {
     public interface IGenericEntityService<TEntity, TCreateDto, TUpdateDto, TEntityViewModel>
-        where TEntity : AudiTableEntity
+        where TEntity : AuditableEntity
         where TEntityViewModel : BaseViewModel
         where TCreateDto : BaseCreateDto
         where TUpdateDto : BaseUpdateDto

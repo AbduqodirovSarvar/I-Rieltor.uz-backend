@@ -8,7 +8,7 @@ namespace Domain.Entities
     /// Foydalanuvchining auksionda qatnashish arizasi va ishtirokchi sifatidagi holati.
     /// Bir foydalanuvchi bir auksionga bitta (o'chirilmagan) ariza beradi.
     /// </summary>
-    public class AuctionParticipant : AudiTableEntity
+    public class AuctionParticipant : AuditableEntity
     {
         /// <summary>
         /// Auksion Id'si (FK).

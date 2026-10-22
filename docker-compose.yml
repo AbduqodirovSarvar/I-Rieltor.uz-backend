@@ -95,7 +95,7 @@ services:
       ForwardedHeaders__KnownNetworks__0: ""
     volumes:
       - files:/data/files
-    # The runtime image has no curl: the app probes its own /health/ready (WebApi/Extentions/HealthProbe.cs).
+    # The runtime image has no curl: the app probes its own /health/ready (WebApi/Extensions/HealthProbe.cs).
     healthcheck:
       test: ["CMD", "dotnet", "WebApi.dll", "--healthcheck"]
       interval: 15s

@@ -8,7 +8,7 @@ namespace Domain.Entities
     /// xaridorni ko'rsatadi: g'olib voz kechib, obyekt ikkinchi o'ringa o'tsa, ular almashadi. Kimga qachon
     /// taklif qilingani tarixi <see cref="Awards"/>da.
     /// </summary>
-    public class AuctionResult : AudiTableEntity
+    public class AuctionResult : AuditableEntity
     {
         /// <summary>
         /// Auksion Id'si (FK). Takrorlanmaydi.

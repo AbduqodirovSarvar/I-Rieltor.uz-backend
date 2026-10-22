@@ -6,7 +6,7 @@ namespace Domain.Entities
     /// <summary>
     /// Ko'chmas mulk toifasi (masalan "Turar joy" → "Kvartira"). Ichma-ich bo'lishi mumkin.
     /// </summary>
-    public class PropertyCategory : AudiTableEntity
+    public class PropertyCategory : AuditableEntity
     {
         /// <summary>
         /// Toifa nomi. O'chirilmagan toifalar orasida takrorlanmaydi (katta-kichik harfga qaramay).

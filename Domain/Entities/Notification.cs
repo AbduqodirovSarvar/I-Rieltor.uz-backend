@@ -9,7 +9,7 @@ namespace Domain.Entities
     /// fon xizmati esa uni yuboradi va muvaffaqiyatsiz bo'lsa qayta urinadi: amal bajarilgan bo'lsa xabar yo'qolmaydi.
     /// Har kanal uchun alohida yozuv.
     /// </summary>
-    public class Notification : AudiTableEntity
+    public class Notification : AuditableEntity
     {
         /// <summary>
         /// Qabul qiluvchi foydalanuvchi Id'si (FK).

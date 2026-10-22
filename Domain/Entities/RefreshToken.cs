@@ -7,7 +7,7 @@ namespace Domain.Entities
     /// Foydalanuvchi sessiyasi: qisqa muddatli access token tugaganda yangisini olish uchun beriladigan token.
     /// Har bir foydalanishda almashtiriladi (rotatsiya): eski token bekor qilinadi, o'rniga yangisi beriladi.
     /// </summary>
-    public class RefreshToken : AudiTableEntity
+    public class RefreshToken : AuditableEntity
     {
         /// <summary>
         /// Token egasi bo'lgan foydalanuvchining Id'si (FK).

@@ -8,7 +8,7 @@ namespace Domain.Entities
     /// Bitta obyekt bo'yicha savdo (lot). Narx va qoidalar shu yerda, har auksion uchun alohida.
     /// Barcha vaqtlar UTC.
     /// </summary>
-    public class Auction : AudiTableEntity
+    public class Auction : AuditableEntity
     {
         /// <summary>
         /// Lot raqami (masalan "2026-000125"). Takrorlanmaydi.

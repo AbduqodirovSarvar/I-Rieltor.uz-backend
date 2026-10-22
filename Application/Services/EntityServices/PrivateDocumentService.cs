@@ -1,5 +1,5 @@
 using Application.Exceptions;
-using Application.Extentions;
+using Application.Extensions;
 using Application.Interfaces.Auths;
 using Application.Interfaces.EntityServices;
 using Application.Interfaces.Files;
@@ -30,13 +30,21 @@ namespace Application.Services.EntityServices
             => unitOfWork.ExecuteAsync(async () =>
             {
                 var userId = currentUser.UserId ?? throw new UnauthenticatedException("Sign in first.");
-                if (await documents.GetPaginatedAsync(d => d.OwnerId == userId, 0, 1, null, cancellationToken) is { TotalItems: >= MaxDocumentsPerUser })
-                    throw new ConflictException($"You can keep at most {MaxDocumentsPerUser} documents; delete some first.");
                 if (dto.AuctionId is { } auctionId && !await auctions.AnyAsync(a => a.Id == auctionId, cancellationToken))
                     throw new BadRequestException("The auction does not exist.");
-                // A receipt can only be attached to one's own payment: the payment id would otherwise let anyone attach files to others.
+                // A receipt can be attached to one's own payment; the staff who confirm payments by hand attach the check
+                // they received to any payment. The payment id would otherwise let anyone attach files to others.
+                var staffReceipt = false;
                 if (dto.PaymentId is { } paymentId && !await payments.AnyAsync(p => p.Id == paymentId && p.UserId == userId, cancellationToken))
-                    throw new BadRequestException("The payment does not exist.");
+                {
+                    staffReceipt = await payments.AnyAsync(p => p.Id == paymentId, cancellationToken)
+                                   && (await permissionService.Check("CREATE_PAYMENT") || await permissionService.Check("UPDATE_PAYMENT"));
+                    if (!staffReceipt)
+                        throw new BadRequestException("The payment does not exist.");
+                }
+                // The staff's receipts are their work, not their own storage.
+                if (!staffReceipt && await documents.GetPaginatedAsync(d => d.OwnerId == userId, 0, 1, null, cancellationToken) is { TotalItems: >= MaxDocumentsPerUser })
+                    throw new ConflictException($"You can keep at most {MaxDocumentsPerUser} documents; delete some first.");
 
                 var stored = await store.SaveAsync(dto.File, cancellationToken);
                 unitOfWork.OnRollback(() => { store.Discard(stored.StoredName); return Task.CompletedTask; });
@@ -44,7 +52,7 @@ namespace Application.Services.EntityServices
                 var entity = await documents.CreateAsync(new PrivateDocument
                 {
                     OwnerId = userId,
-                    Purpose = dto.Purpose,
+                    Purpose = dto.PaymentId != null && dto.Purpose == Domain.Enums.DocumentPurpose.OTHER ? Domain.Enums.DocumentPurpose.PAYMENT_RECEIPT : dto.Purpose,
                     AuctionId = dto.AuctionId,
                     PaymentId = dto.PaymentId,
                     OriginalName = stored.OriginalName,
@@ -86,7 +94,7 @@ namespace Application.Services.EntityServices
 
         public async Task<PrivateDocumentDownload> DownloadAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            var document = await FindAccessibleAsync(id, "READ_PRIVATEDOCUMENT", cancellationToken);
+            var document = await FindAccessibleAsync(id, "READ_PRIVATEDOCUMENT", cancellationToken, allowPayer: true);
             return new PrivateDocumentDownload(store.OpenRead(document.StoredName), document.ContentType, document.OriginalName);
         }
 
@@ -100,15 +108,20 @@ namespace Application.Services.EntityServices
             }, cancellationToken);
 
         /// <summary>
-        /// The owner, or staff with <paramref name="staffPermission"/>. Everybody else: not found.
+        /// The owner, or staff with <paramref name="staffPermission"/> (for a download also the payer of the payment the document belongs to). Everybody else: not found.
         /// </summary>
-        private async Task<PrivateDocument> FindAccessibleAsync(Guid id, string staffPermission, CancellationToken cancellationToken)
+        private async Task<PrivateDocument> FindAccessibleAsync(Guid id, string staffPermission, CancellationToken cancellationToken, bool allowPayer = false)
         {
             var userId = currentUser.UserId ?? throw new UnauthenticatedException("Sign in first.");
             var document = await documents.GetAsync(d => d.Id == id, cancellationToken);
-            if (document == null || (document.OwnerId != userId && !await permissionService.Check(staffPermission)))
+            if (document == null)
                 throw new NotFoundException("Document not found");
-            return document;
+            if (document.OwnerId == userId || await permissionService.Check(staffPermission))
+                return document;
+            // The payer may read the receipts the staff attached to their own payment (but not change or delete them).
+            if (allowPayer && document.PaymentId is { } paymentId && await payments.AnyAsync(p => p.Id == paymentId && p.UserId == userId, cancellationToken))
+                return document;
+            throw new NotFoundException("Document not found");
         }
     }
 }

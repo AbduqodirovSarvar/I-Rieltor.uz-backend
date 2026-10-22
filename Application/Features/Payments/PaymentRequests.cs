@@ -21,7 +21,7 @@ namespace Application.Features.Payments
         /// <summary>DEPOSIT or FINAL_PAYMENT.</summary>
         public PaymentPurpose Purpose { get; init; }
 
-        /// <summary>PAYME, CLICK or BANK_TRANSFER.</summary>
+        /// <summary>PAYME, CLICK, BANK_TRANSFER or CARD_TRANSFER.</summary>
         public PaymentProvider Provider { get; init; }
     }
 
@@ -36,7 +36,7 @@ namespace Application.Features.Payments
         public PaymentPurpose Purpose { get; init; }
         [Range(0.01, 1_000_000_000_000_000.0)]
         public decimal Amount { get; init; }
-        /// <summary>BANK_TRANSFER or MANUAL.</summary>
+        /// <summary>BANK_TRANSFER, CARD_TRANSFER or MANUAL.</summary>
         public PaymentProvider Provider { get; init; } = PaymentProvider.BANK_TRANSFER;
         /// <summary>The bank's reference of the transfer.</summary>
         [MaxLength(100)]

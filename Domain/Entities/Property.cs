@@ -8,7 +8,7 @@ namespace Domain.Entities
     /// Auksionga qo'yiladigan ko'chmas mulk obyekti. Narx va savdo shartlari obyektda emas, auksionda
     /// (<see cref="Auction"/>): bir obyekt bir necha marta (masalan bo'lib o'tmagan savdodan keyin) qo'yilishi mumkin.
     /// </summary>
-    public class Property : AudiTableEntity
+    public class Property : AuditableEntity
     {
         /// <summary>
         /// Katalogdagi sarlavha (masalan "3 xonali kvartira, Chilonzor").

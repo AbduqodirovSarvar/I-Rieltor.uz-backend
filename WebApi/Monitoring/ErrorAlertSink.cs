@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Options;
-using Persistance.Models.ConfigModels;
+using Infrastructure.Models.ConfigModels;
 using Serilog.Core;
 using Serilog.Debugging;
 using Serilog.Events;
@@ -24,7 +24,7 @@ namespace WebApi.Monitoring
         // The request log line of a 5xx only repeats the error already logged by the code that failed.
         private static readonly string[] IgnoredSources =
         [
-            "Persistance.Services.Notifications.EmailService",
+            "Infrastructure.Services.Notifications.EmailService",
             "Serilog.AspNetCore.RequestLoggingMiddleware",
             typeof(ErrorAlertSink).FullName!,
         ];

@@ -1,5 +1,5 @@
 using Application.Exceptions;
-using Application.Extentions;
+using Application.Extensions;
 using Application.Interfaces.Auths;
 using Application.Interfaces.Payments;
 using Application.Interfaces.Repositories;
@@ -18,6 +18,7 @@ namespace Application.Services.Payments
 {
     public sealed class PaymentService(
         IPaymentRepository payments,
+        IPrivateDocumentRepository documents,
         IAuctionRepository auctions,
         IAuctionParticipantRepository participants,
         IAuctionAwardRepository awards,
@@ -87,6 +88,7 @@ namespace Application.Services.Payments
                 PaymentProvider.PAYME => settings.Payme.Enabled,
                 PaymentProvider.CLICK => settings.Click.Enabled,
                 PaymentProvider.BANK_TRANSFER => settings.BankTransfer.Enabled,
+                PaymentProvider.CARD_TRANSFER => settings.CardTransfer.Enabled,
                 _ => false,
             };
             if (!available)
@@ -105,9 +107,12 @@ namespace Application.Services.Payments
                 PaymentProvider.CLICK => ClickUrl(payment),
                 _ => null,
             },
-            Instructions = payment.Provider == PaymentProvider.BANK_TRANSFER
-                ? $"{settings.BankTransfer.Instructions}\nTo'lov maqsadi: {payment.Id}"
-                : null,
+            Instructions = payment.Provider switch
+            {
+                PaymentProvider.BANK_TRANSFER => $"{settings.BankTransfer.Instructions}\nTo'lov maqsadi: {payment.Id}",
+                PaymentProvider.CARD_TRANSFER => $"{settings.CardTransfer.Instructions}\nIzoh: {payment.Id}",
+                _ => null,
+            },
         };
 
         /// <summary>Payme's checkout page takes its parameters as one Base64 string: merchant, order, amount in tiyin, return address.</summary>
@@ -149,8 +154,33 @@ namespace Application.Services.Payments
             };
             var (data, total) = await payments.GetPaginatedAsync(predicate, query.PageIndex, query.PageSize,
                 query.BuildOrderBy<Payment>() ?? (q => q.OrderByDescending(p => p.CreatedAt).ThenByDescending(p => p.Id)), cancellationToken);
-            return ResponseModel<List<PaymentViewModel>>.Ok(mapper.Map<List<PaymentViewModel>>(data), query.PageIndex, query.PageSize, total);
+            var views = mapper.Map<List<PaymentViewModel>>(data);
+            await AttachReceiptsAsync(views, cancellationToken);
+            return ResponseModel<List<PaymentViewModel>>.Ok(views, query.PageIndex, query.PageSize, total);
         }
+
+        /// <summary>The receipts of the payments in one query.</summary>
+        private async Task AttachReceiptsAsync(List<PaymentViewModel> views, CancellationToken cancellationToken)
+        {
+            if (views.Count == 0)
+                return;
+            var ids = views.Select(v => (Guid?)v.Id).ToList();
+            var (files, _) = await documents.GetPaginatedAsync(d => ids.Contains(d.PaymentId), 0, 1000,
+                q => q.OrderBy(d => d.CreatedAt).ThenBy(d => d.Id), cancellationToken);
+            foreach (var view in views)
+                view.Receipts = files.Where(f => f.PaymentId == view.Id)
+                    .Select(f => new PaymentReceiptViewModel(f.Id, f.OriginalName, f.ContentType, f.Size, f.OwnerId, f.Description, f.CreatedAt)).ToList();
+        }
+
+        private async Task<PaymentViewModel> ViewOfAsync(Payment payment, CancellationToken cancellationToken)
+        {
+            var view = mapper.Map<PaymentViewModel>(payment);
+            await AttachReceiptsAsync([view], cancellationToken);
+            return view;
+        }
+
+        private static bool IsHandRecorded(PaymentProvider provider)
+            => provider is PaymentProvider.BANK_TRANSFER or PaymentProvider.CARD_TRANSFER or PaymentProvider.MANUAL;
 
         // ---------------- staff
 
@@ -158,8 +188,8 @@ namespace Application.Services.Payments
             => unitOfWork.ExecuteAsync(async () =>
             {
                 await EnsurePermissionAsync("CREATE_PAYMENT");
-                if (provider is not (PaymentProvider.BANK_TRANSFER or PaymentProvider.MANUAL))
-                    throw new BadRequestException("Only bank transfers and manual entries are recorded by hand; Payme and Click report their own payments.");
+                if (!IsHandRecorded(provider))
+                    throw new BadRequestException("Only bank or card transfers and manual entries are recorded by hand; Payme and Click report their own payments.");
                 if (purpose is not (PaymentPurpose.DEPOSIT or PaymentPurpose.FINAL_PAYMENT))
                     throw new BadRequestException("Only a deposit or the final payment can be recorded; a refund is completed with its own request.");
 
@@ -186,7 +216,7 @@ namespace Application.Services.Payments
                     Note = Clean(note),
                 }, cancellationToken);
                 await processor.MarkPaidAsync(payment, DateTime.UtcNow, cancellationToken);
-                return ResponseModel<PaymentViewModel>.Ok(mapper.Map<PaymentViewModel>(payment));
+                return ResponseModel<PaymentViewModel>.Ok(await ViewOfAsync(payment, cancellationToken));
             }, cancellationToken);
 
         public Task<ResponseModel<PaymentViewModel>> ConfirmAsync(Guid paymentId, string? reference, CancellationToken cancellationToken = default)
@@ -196,14 +226,14 @@ namespace Application.Services.Payments
                 var payment = await payments.GetAsync(p => p.Id == paymentId, cancellationToken) ?? throw new NotFoundException("Payment not found");
                 if (payment.Purpose == PaymentPurpose.REFUND)
                     throw new BadRequestException("A refund is completed with refund/complete.");
-                if (payment.Provider is not (PaymentProvider.BANK_TRANSFER or PaymentProvider.MANUAL))
+                if (!IsHandRecorded(payment.Provider))
                     throw new BadRequestException("Payme and Click payments are confirmed by the provider, not by hand.");
                 if (payment.Status != PaymentStatus.PENDING)
                     throw new ConflictException($"The payment is already {payment.Status}.");
 
                 payment.ProviderTransactionId = Clean(reference) ?? payment.ProviderTransactionId;
                 await processor.MarkPaidAsync(payment, DateTime.UtcNow, cancellationToken);
-                return ResponseModel<PaymentViewModel>.Ok(mapper.Map<PaymentViewModel>(payment));
+                return ResponseModel<PaymentViewModel>.Ok(await ViewOfAsync(payment, cancellationToken));
             }, cancellationToken);
 
         public Task<ResponseModel<PaymentViewModel>> CompleteRefundAsync(Guid paymentId, string? reference, CancellationToken cancellationToken = default)
@@ -217,7 +247,7 @@ namespace Application.Services.Payments
 
                 payment.ProviderTransactionId = Clean(reference);
                 await processor.MarkPaidAsync(payment, DateTime.UtcNow, cancellationToken);
-                return ResponseModel<PaymentViewModel>.Ok(mapper.Map<PaymentViewModel>(payment));
+                return ResponseModel<PaymentViewModel>.Ok(await ViewOfAsync(payment, cancellationToken));
             }, cancellationToken);
 
         private static string? Clean(string? text) => string.IsNullOrWhiteSpace(text) ? null : text.Trim();

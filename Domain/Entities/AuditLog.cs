@@ -9,7 +9,7 @@ namespace Domain.Entities
     /// yozilmaydi: ularda parol, token va shaxsiy ma'lumotlar bo'lishi mumkin. Yozuv o'zgartirilmaydi;
     /// eskilari saqlash muddati (Retention:AuditLogDays) o'tgach o'chiriladi.
     /// </summary>
-    public class AuditLog : AudiTableEntity
+    public class AuditLog : AuditableEntity
     {
         /// <summary>
         /// So'rov yuborilgan vaqt (UTC). CreatedAt yozuv bazaga tushgan vaqt (bir necha soniya keyin).

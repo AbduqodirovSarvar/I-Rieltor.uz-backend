@@ -1,0 +1,123 @@
+using Application.Interfaces.Repositories;
+using Microsoft.Extensions.Logging;
+using Persistence.Data;
+
+namespace Persistence.Services.Repositories.Abstractions
+{
+    /// <summary>
+    /// Scoped per request. Not thread-safe, like the DbContext it wraps.
+    /// </summary>
+    public sealed class UnitOfWork(AppDbContext context, ILogger<UnitOfWork> logger) : IUnitOfWork
+    {
+        private readonly List<Func<Task>> _afterCommit = [];
+        private readonly List<Func<Task>> _onRollback = [];
+        private readonly List<Func<Task>> _onCommitUnknown = [];
+        private int _depth;
+
+        public async Task<T> ExecuteAsync<T>(Func<Task<T>> action, CancellationToken cancellationToken = default)
+        {
+            if (_depth > 0)
+            {
+                _depth++;
+                try { return await action(); }
+                finally { _depth--; }
+            }
+
+            await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+            _depth = 1;
+            T result;
+            try
+            {
+                result = await action();
+            }
+            catch
+            {
+                _depth = 0;
+                try
+                {
+                    await transaction.RollbackAsync(CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    // The connection may already be gone; the server drops the transaction anyway.
+                    logger.LogWarning(ex, "Transaction rollback failed");
+                }
+
+                // Entities saved inside the transaction are tracked as stored although they are not.
+                context.ChangeTracker.Clear();
+                _afterCommit.Clear();
+                _onCommitUnknown.Clear();
+                await RunAsync(Drain(_onRollback), "rollback");
+                throw;
+            }
+
+            try
+            {
+                // Not the request token: a client hanging up during COMMIT must not turn a commit the server
+                // may already have made into a "rollback" that deletes the new files of committed rows.
+                await transaction.CommitAsync(CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                _depth = 0;
+                // The outcome is unknown (e.g. the connection broke after COMMIT was sent). Undo steps would delete
+                // files the committed rows may point at, and after-commit steps may act on rows that do not exist,
+                // so neither runs: at worst an unreferenced file stays on disk.
+                logger.LogError(ex, "Transaction commit failed; its outcome is unknown, so no rollback or after-commit steps were run");
+                context.ChangeTracker.Clear();
+                _onRollback.Clear();
+                _afterCommit.Clear();
+                await RunAsync(Drain(_onCommitUnknown), "commit-outcome-unknown");
+                throw;
+            }
+
+            _depth = 0;
+            _onRollback.Clear();
+            _onCommitUnknown.Clear();
+            await RunAsync(Drain(_afterCommit), "after-commit");
+            return result;
+        }
+
+        public async Task AfterCommitAsync(Func<Task> callback)
+        {
+            if (_depth > 0)
+                _afterCommit.Add(callback);
+            else
+                await RunAsync([callback], "after-commit");
+        }
+
+        public void OnRollback(Func<Task> callback)
+        {
+            if (_depth > 0)
+                _onRollback.Add(callback);
+        }
+
+        public void OnCommitOutcomeUnknown(Func<Task> callback)
+        {
+            if (_depth > 0)
+                _onCommitUnknown.Add(callback);
+        }
+
+        private static List<Func<Task>> Drain(List<Func<Task>> callbacks)
+        {
+            var copy = callbacks.ToList();
+            callbacks.Clear();
+            return copy;
+        }
+
+        private async Task RunAsync(List<Func<Task>> callbacks, string stage)
+        {
+            foreach (var callback in callbacks)
+            {
+                try
+                {
+                    await callback();
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "A {Stage} step failed", stage);
+                }
+            }
+        }
+    }
+}

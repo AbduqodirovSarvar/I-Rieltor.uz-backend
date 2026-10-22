@@ -9,7 +9,7 @@ namespace Domain.Entities
     /// farqli, u /uploads orqali berilmaydi: yopiq papkada turadi va faqat egasiga yoki READ_PRIVATEDOCUMENT ruxsatiga
     /// ega xodimga, kirish tekshirilgach beriladi.
     /// </summary>
-    public class PrivateDocument : AudiTableEntity
+    public class PrivateDocument : AuditableEntity
     {
         /// <summary>
         /// Hujjat egasi (yuklagan foydalanuvchi) Id'si (FK).

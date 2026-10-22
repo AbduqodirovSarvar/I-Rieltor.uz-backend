@@ -13,7 +13,7 @@ namespace Domain.Entities
     /// Serverga yuklangan fayl (rasm, hujjat, video) haqidagi ma'lumot.
     /// Faylning o'zi diskda (wwwroot/uploads) turadi, bu yerda faqat uning metama'lumotlari saqlanadi.
     /// </summary>
-    public class UploadedFile : AudiTableEntity
+    public class UploadedFile : AuditableEntity
     {
         /// <summary>
         /// Diskdagi fayl nomi (GUID + kengaytma). Noyob.

@@ -18,7 +18,7 @@ namespace WebApi.Controllers
     {
         /// <summary>
         /// Starts a payment: <c>purpose</c> DEPOSIT (before bidding) or FINAL_PAYMENT (the price less the deposit, after winning) and
-        /// <c>provider</c> PAYME, CLICK or BANK_TRANSFER. Returns the address to send the payer to (<c>url</c>) or the bank
+        /// <c>provider</c> PAYME, CLICK, BANK_TRANSFER or CARD_TRANSFER. Returns the address to send the payer to (<c>url</c>) or the bank
         /// details (<c>instructions</c>). The same request returns the same payment.
         /// </summary>
         [HttpPost("checkout")]
@@ -39,13 +39,13 @@ namespace WebApi.Controllers
         public async Task<IActionResult> GetAll([FromQuery] GetPaymentListQuery query)
             => Ok(await _mediator.Send(query, HttpContext.RequestAborted));
 
-        /// <summary>Staff: money that arrived (bank transfer, cash) is entered; the amount must be exactly the one due.</summary>
+        /// <summary>Staff: money that arrived (bank or card transfer, cash) is entered; the amount must be exactly the one due. Attach the check with POST api/Document (PaymentId); it shows in the payment's receipts.</summary>
         [Authorize(Policy = nameof(PaymentActions.CREATE_PAYMENT))]
         [HttpPost("manual")]
         public async Task<IActionResult> RecordManual([FromBody] RecordManualPaymentCommand command)
             => Ok(await _mediator.Send(command));
 
-        /// <summary>Staff: the bank transfer of a pending payment arrived.</summary>
+        /// <summary>Staff: the bank or card transfer of a pending payment arrived (attach the check first with POST api/Document, PaymentId).</summary>
         [Authorize(Policy = nameof(PaymentActions.UPDATE_PAYMENT))]
         [HttpPost("confirm")]
         public async Task<IActionResult> Confirm([FromBody] ConfirmPaymentCommand command)

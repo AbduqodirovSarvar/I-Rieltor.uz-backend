@@ -1,4 +1,4 @@
-using Application.Extentions;
+using Application.Extensions;
 using Application.Features.Abstractions.Commands.Interfaces;
 using Application.Features.Abstractions.Queries.Interfaces;
 using Application.Interfaces.EntityServices;

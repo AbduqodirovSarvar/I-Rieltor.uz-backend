@@ -23,7 +23,8 @@ WORKDIR /src
 COPY ["Directory.Build.props", "./"]
 COPY ["WebApi/WebApi.csproj", "WebApi/packages.lock.json", "WebApi/"]
 COPY ["Application/Application.csproj", "Application/packages.lock.json", "Application/"]
-COPY ["Persistance/Persistance.csproj", "Persistance/packages.lock.json", "Persistance/"]
+COPY ["Persistence/Persistence.csproj", "Persistence/packages.lock.json", "Persistence/"]
+COPY ["Infrastructure/Infrastructure.csproj", "Infrastructure/packages.lock.json", "Infrastructure/"]
 COPY ["Domain/Domain.csproj", "Domain/packages.lock.json", "Domain/"]
 RUN dotnet restore "./WebApi/WebApi.csproj" --locked-mode
 COPY . .

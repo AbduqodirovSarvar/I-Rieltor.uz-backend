@@ -7,7 +7,7 @@ namespace Domain.Entities
     /// <summary>
     /// Pul harakati: zakalat, yakuniy to'lov yoki zakalatni qaytarish. Holati to'lov tizimining javobi bilan o'zgaradi.
     /// </summary>
-    public class Payment : AudiTableEntity
+    public class Payment : AuditableEntity
     {
         /// <summary>
         /// To'lovchi (qaytarishda oluvchi) foydalanuvchi Id'si (FK).

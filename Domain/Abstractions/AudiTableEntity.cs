@@ -7,7 +7,7 @@ namespace Domain.Abstractions
     /// Kim va qachon yaratgani, o'zgartirgani hamda o'chirilganlik belgisini saqlaydi.
     /// Maydonlarni <c>AuditableEntitySaveChangesInterceptor</c> avtomatik to'ldiradi.
     /// </summary>
-    public abstract class AudiTableEntity : BaseEntity
+    public abstract class AuditableEntity : BaseEntity
     {
         /// <summary>
         /// Yozuv yaratilgan vaqt (UTC). Saqlashda avtomatik qo'yiladi.

@@ -12,7 +12,7 @@ namespace Domain.Entities
     /// <summary>
     /// Rolga berilgan bitta ruxsat. Bitta rol uchun har bir ruxsat faqat bir marta yoziladi.
     /// </summary>
-    public class UserRolePermission : AudiTableEntity
+    public class UserRolePermission : AuditableEntity
     {
         /// <summary>
         /// Ruxsat tegishli bo'lgan rolning Id'si (FK).

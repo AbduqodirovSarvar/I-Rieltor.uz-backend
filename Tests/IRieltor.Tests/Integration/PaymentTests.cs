@@ -125,6 +125,70 @@ namespace IRieltor.Tests.Integration
             Assert.Equal(HttpStatusCode.Forbidden, (await who.Client.PostAsJsonAsync("api/payment/manual", new { participantId = who.ParticipantId, purpose = "DEPOSIT", amount = 5_000_000, provider = "MANUAL" })).StatusCode);
         }
 
+        // ---------------- card transfer and receipts (until the payment systems are connected)
+
+        private static Task<HttpResponseMessage> UploadReceiptAsync(HttpClient client, string paymentId, string text)
+        {
+            var content = new MultipartFormDataContent
+            {
+                { new ByteArrayContent(Encoding.ASCII.GetBytes("%PDF-1.4\n% " + text + "\n")), "File", "chek.pdf" },
+                { new StringContent(paymentId), "PaymentId" },
+            };
+            return client.PostAsync("api/document", content);
+        }
+
+        [Fact]
+        public async Task A_card_transfer_is_confirmed_by_the_staff_with_the_receipts_of_the_payer_and_of_the_staff()
+        {
+            var admin = await api.AdminClientAsync();
+            var (auctionId, who) = await UnpaidParticipantAsync(admin);
+            var other = await api.EimzoUserAsync();
+
+            var checkout = await CheckoutAsync(who, auctionId, "CARD_TRANSFER");
+            Assert.Null(checkout["url"]);
+            Assert.Contains("8600 1234 5678 9012", checkout["instructions"]!.GetValue<string>());
+            Assert.Contains(checkout["paymentId"]!.GetValue<string>(), checkout["instructions"]!.GetValue<string>());
+            var paymentId = checkout["paymentId"]!.GetValue<string>();
+
+            // The payer attaches the check of the transfer; nobody else can attach one to this payment.
+            var mine = await Ok(await UploadReceiptAsync(who.Client, paymentId, "payer check"));
+            Assert.Equal("PAYMENT_RECEIPT", mine["data"]!["purpose"]!.GetValue<string>());
+            Assert.Equal(HttpStatusCode.BadRequest, (await UploadReceiptAsync(other.Client, paymentId, "foreign")).StatusCode);
+
+            // The staff attach the check they received and mark the payment paid.
+            var staffDocument = (await Ok(await UploadReceiptAsync(admin, paymentId, "staff check")))["data"]!["id"]!.GetValue<string>();
+            Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync("api/payment/confirm", new { id = paymentId, reference = "KARTA-1" })).StatusCode);
+            Assert.Equal("PAID", await StatusOf(paymentId));
+            Assert.Equal("PAID", await DepositOf(who));
+
+            // Both receipts show on the payment, for the payer and for the staff.
+            var payerView = (await Ok(await who.Client.GetAsync("api/payment/my")))["data"]!.AsArray().Single(p => p!["id"]!.GetValue<string>() == paymentId)!;
+            Assert.Equal(2, payerView["receipts"]!.AsArray().Count);
+            var staffView = (await Ok(await admin.GetAsync($"api/payment/list?Filters%5Bid.equals%5D={paymentId}")))["data"]!.AsArray().Single()!;
+            Assert.Equal(2, staffView["receipts"]!.AsArray().Count);
+
+            // The payer can open the check the staff attached; a stranger cannot; the payer cannot delete it.
+            Assert.Equal(HttpStatusCode.OK, (await who.Client.GetAsync($"api/document/download?id={staffDocument}")).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await other.Client.GetAsync($"api/document/download?id={staffDocument}")).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await who.Client.SendAsync(new HttpRequestMessage(HttpMethod.Delete, "api/document") { Content = JsonContent.Create(new { id = staffDocument }) })).StatusCode);
+        }
+
+        [Fact]
+        public async Task The_staff_record_a_card_payment_by_hand_and_attach_the_check_to_it()
+        {
+            var admin = await api.AdminClientAsync();
+            var (_, who) = await UnpaidParticipantAsync(admin);
+
+            var recorded = (await Ok(await admin.PostAsJsonAsync("api/payment/manual", new { participantId = who.ParticipantId, purpose = "DEPOSIT", amount = 5_000_000, provider = "CARD_TRANSFER", reference = "8600****9012" })))["data"]!;
+            var paymentId = recorded["id"]!.GetValue<string>();
+            Assert.Equal("PAID", recorded["status"]!.GetValue<string>());
+            Assert.Equal("PAID", await DepositOf(who));
+
+            Assert.Equal(HttpStatusCode.OK, (await UploadReceiptAsync(admin, paymentId, "cash desk check")).StatusCode);
+            Assert.Equal(1, (await Ok(await who.Client.GetAsync("api/payment/my")))["data"]!.AsArray().Single(p => p!["id"]!.GetValue<string>() == paymentId)!["receipts"]!.AsArray().Count);
+            Assert.Equal(HttpStatusCode.BadRequest, (await UploadReceiptAsync(who.Client, Guid.NewGuid().ToString(), "nothing")).StatusCode);
+        }
+
         // ---------------- Payme
 
         private async Task<JsonObject> PaymeAsync(string method, object parameters, string? key = ApiFactory.PaymeKey, int id = 7)

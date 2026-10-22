@@ -3,7 +3,7 @@ using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
-using Persistance.Data;
+using Persistence.Data;
 
 namespace IRieltor.Tests.Integration
 {

@@ -2,8 +2,8 @@ using Application.Exceptions;
 using Application.Notifications;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Persistance.Models.ConfigModels;
-using Persistance.Services.Notifications;
+using Infrastructure.Models.ConfigModels;
+using Infrastructure.Services.Notifications;
 using System.Net;
 using System.Text;
 

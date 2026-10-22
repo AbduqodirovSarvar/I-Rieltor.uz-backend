@@ -16,7 +16,11 @@ namespace Application.Models.ViewModels.Payments
         public DateTime? PaidAt { get; set; }
         public DateTime? CancelledAt { get; set; }
         public string? Note { get; set; }
+        /// <summary>Receipts (checks) attached to the payment by the payer or by the staff.</summary>
+        public List<PaymentReceiptViewModel> Receipts { get; set; } = [];
     }
+
+    public record PaymentReceiptViewModel(Guid Id, string OriginalName, string ContentType, long Size, Guid OwnerId, string? Description, DateTime CreatedAt);
 
     /// <summary>What the payer needs to pay: open <see cref="Url"/> (Payme, Click), or follow <see cref="Instructions"/> (bank transfer).</summary>
     public record CheckoutViewModel

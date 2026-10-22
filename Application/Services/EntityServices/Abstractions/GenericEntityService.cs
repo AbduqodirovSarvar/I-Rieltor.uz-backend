@@ -23,7 +23,7 @@ namespace Application.Services.EntityServices.Abstractions
         IPermissionService permissionService,
         IMapper mapper)
         : IGenericEntityService<TEntity, TCreateDto, TUpdateDto, TEntityViewModel>
-        where TEntity : AudiTableEntity
+        where TEntity : AuditableEntity
         where TEntityViewModel : BaseViewModel
         where TCreateDto : BaseCreateDto
         where TUpdateDto : BaseUpdateDto

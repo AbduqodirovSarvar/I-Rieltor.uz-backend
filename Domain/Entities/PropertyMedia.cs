@@ -6,7 +6,7 @@ namespace Domain.Entities
     /// <summary>
     /// Obyektga biriktirilgan fayl: rasm, hujjat yoki video. Fayl o'zi <see cref="UploadedFile"/>da.
     /// </summary>
-    public class PropertyMedia : AudiTableEntity
+    public class PropertyMedia : AuditableEntity
     {
         /// <summary>
         /// Obyekt Id'si (FK).

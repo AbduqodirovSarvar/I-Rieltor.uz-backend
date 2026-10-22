@@ -14,6 +14,7 @@ namespace Application.Models.Configuration
         public PaymeSettings Payme { get; set; } = new();
         public ClickSettings Click { get; set; } = new();
         public BankTransferSettings BankTransfer { get; set; } = new();
+        public CardTransferSettings CardTransfer { get; set; } = new();
 
         public sealed class PaymeSettings
         {
@@ -39,6 +40,14 @@ namespace Application.Models.Configuration
             public string CheckoutUrl { get; set; } = "https://my.click.uz/services/pay";
 
             public bool Enabled => !string.IsNullOrWhiteSpace(ServiceId) && !string.IsNullOrWhiteSpace(MerchantId) && !string.IsNullOrWhiteSpace(SecretKey);
+        }
+
+        public sealed class CardTransferSettings
+        {
+            /// <summary>Card number, the holder and the payment purpose text shown to the payer. Empty: off.</summary>
+            public string Instructions { get; set; } = string.Empty;
+
+            public bool Enabled => !string.IsNullOrWhiteSpace(Instructions);
         }
 
         public sealed class BankTransferSettings

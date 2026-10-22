@@ -16,13 +16,13 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.Tasks;
 using WebApi.Controllers.Abstractions;
-using WebApi.Extentions;
+using WebApi.Extensions;
 
 namespace WebApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [EnableRateLimiting(DepencyInjection.AuthRateLimitPolicy)]
+    [EnableRateLimiting(WebApiDependencyInjection.AuthRateLimitPolicy)]
     public class AuthController(IMediator mediator) : BaseController(mediator)
     {
         [HttpPost("sign-in")]
@@ -39,7 +39,7 @@ namespace WebApi.Controllers
         /// One-time challenge the user signs with E-IMZO before sign-in, sign-up or password reset via E-IMZO.
         /// </summary>
         [HttpGet("eimzo/challenge")]
-        [EnableRateLimiting(DepencyInjection.SessionRateLimitPolicy)]
+        [EnableRateLimiting(WebApiDependencyInjection.SessionRateLimitPolicy)]
         public async Task<IActionResult> GetEimzoChallenge()
         {
             // A challenge is single-use; proxies and browsers must not cache it.
@@ -98,7 +98,7 @@ namespace WebApi.Controllers
         /// the challenge + CRC32 (see e-imzo-mobile.js).
         /// </summary>
         [HttpPost("eimzo/mobile/auth/start")]
-        [EnableRateLimiting(DepencyInjection.SessionRateLimitPolicy)]
+        [EnableRateLimiting(WebApiDependencyInjection.SessionRateLimitPolicy)]
         public async Task<IActionResult> StartEimzoMobileAuth()
         {
             Response.Headers.CacheControl = "no-store";
@@ -110,7 +110,7 @@ namespace WebApi.Controllers
         /// </summary>
         [HttpPost("eimzo/mobile/sign/start")]
         [Authorize]
-        [EnableRateLimiting(DepencyInjection.SessionRateLimitPolicy)]
+        [EnableRateLimiting(WebApiDependencyInjection.SessionRateLimitPolicy)]
         public async Task<IActionResult> StartEimzoMobileSign()
         {
             Response.Headers.CacheControl = "no-store";
@@ -162,7 +162,7 @@ namespace WebApi.Controllers
         /// Exchanges a refresh token for a new access token and a new refresh token; the old one stops working.
         /// </summary>
         [HttpPost("refresh-token")]
-        [EnableRateLimiting(DepencyInjection.SessionRateLimitPolicy)]
+        [EnableRateLimiting(WebApiDependencyInjection.SessionRateLimitPolicy)]
         public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenCommand command)
         {
             var result = await _mediator.Send(command);
@@ -173,7 +173,7 @@ namespace WebApi.Controllers
         /// Ends the session of the given refresh token. The access token stays valid until it expires.
         /// </summary>
         [HttpPost("logout")]
-        [EnableRateLimiting(DepencyInjection.SessionRateLimitPolicy)]
+        [EnableRateLimiting(WebApiDependencyInjection.SessionRateLimitPolicy)]
         public async Task<IActionResult> Logout([FromBody] LogoutCommand command)
         {
             var result = await _mediator.Send(command);
