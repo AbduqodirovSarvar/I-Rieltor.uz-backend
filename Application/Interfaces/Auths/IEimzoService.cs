@@ -39,5 +39,23 @@ namespace Application.Interfaces.Auths
         /// Verifies a PKCS#7 signature of a document that is passed separately.
         /// </summary>
         Task<EimzoDocumentVerificationResult> VerifyDetachedAsync(string documentBase64, string pkcs7Base64, CancellationToken cancellationToken);
+
+        /// <summary>E-IMZO Mobile / ID-card sign-in: starts a session (POST /frontend/mobile/auth).</summary>
+        Task<EimzoMobileSession> StartMobileAuthAsync(CancellationToken cancellationToken);
+
+        /// <summary>E-IMZO Mobile / ID-card signing of a document: starts a session (POST /frontend/mobile/sign).</summary>
+        Task<EimzoMobileSession> StartMobileSignAsync(CancellationToken cancellationToken);
+
+        /// <summary>Whether the phone has uploaded its signature for the session (POST /frontend/mobile/status).</summary>
+        Task<EimzoMobileStatusResult> GetMobileStatusAsync(string documentId, CancellationToken cancellationToken);
+
+        /// <summary>Reads the signer's certificate of a finished sign-in session (GET /backend/mobile/authenticate/{id}).</summary>
+        Task<EimzoAuthResult> AuthenticateMobileAsync(string documentId, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Checks a finished signing session against the document that was shown on the phone
+        /// (POST /backend/mobile/verify). <paramref name="documentBase64"/> is the raw document, Base64 once.
+        /// </summary>
+        Task<EimzoMobileVerifyResult> VerifyMobileAsync(string documentId, string documentBase64, CancellationToken cancellationToken);
     }
 }

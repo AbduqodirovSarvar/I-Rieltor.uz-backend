@@ -92,6 +92,106 @@ namespace Persistance.Services.Auths
             return timestamped;
         }
 
+        public Task<EimzoMobileSession> StartMobileAuthAsync(CancellationToken cancellationToken)
+            => StartMobileAsync("/frontend/mobile/auth", cancellationToken);
+
+        public Task<EimzoMobileSession> StartMobileSignAsync(CancellationToken cancellationToken)
+            => StartMobileAsync("/frontend/mobile/sign", cancellationToken);
+
+        private async Task<EimzoMobileSession> StartMobileAsync(string path, CancellationToken cancellationToken)
+        {
+            using var request = CreateFormRequest(HttpMethod.Post, path, new Dictionary<string, string>());
+            using var json = await SendAsync(request, cancellationToken);
+            var root = json.RootElement;
+            var status = GetStatus(root);
+            var siteId = GetString(root, "siteId");
+            var documentId = GetString(root, "documentId");
+            if (status != SuccessStatus || string.IsNullOrEmpty(siteId) || string.IsNullOrEmpty(documentId))
+                throw Unavailable($"E-IMZO-SERVER could not start a mobile session (status {status}). Is mobile.siteId set on the server?");
+            // The field is spelled "challange" in E-IMZO-SERVER's answer.
+            return new EimzoMobileSession(siteId, documentId, GetString(root, "challange") ?? GetString(root, "challenge"));
+        }
+
+        public async Task<EimzoMobileStatusResult> GetMobileStatusAsync(string documentId, CancellationToken cancellationToken)
+        {
+            using var request = CreateFormRequest(HttpMethod.Post, "/frontend/mobile/status", new Dictionary<string, string> { ["documentId"] = documentId });
+            using var json = await SendAsync(request, cancellationToken);
+            var status = GetStatus(json.RootElement);
+            return new EimzoMobileStatusResult(status, status switch
+            {
+                1 => "OK",
+                2 => "Waiting for the signature from the phone.",
+                -2 => "The session was not found or has expired. Start again.",
+                _ => GetString(json.RootElement, "message") ?? $"E-IMZO Mobile status {status}."
+            });
+        }
+
+        public async Task<EimzoAuthResult> AuthenticateMobileAsync(string documentId, CancellationToken cancellationToken)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"/backend/mobile/authenticate/{Uri.EscapeDataString(documentId)}");
+            AddCallerHeaders(request);
+            using var json = await SendAsync(request, cancellationToken);
+            var root = json.RootElement;
+            var status = GetStatus(root);
+            if (status == -8)
+                throw new ServiceUnavailableException("Certificate status could not be checked. E-IMZO-SERVER has no connection to the E-IMZO VPN.");
+            var certificate = root.TryGetProperty("subjectCertificateInfo", out var info) && info.ValueKind == JsonValueKind.Object
+                ? ToCertificateInfo(info, ReadStringMap(info, "subjectName"))
+                : null;
+            return new EimzoAuthResult(status == SuccessStatus, status, DescribeMobileStatus(status, GetString(root, "message")), certificate);
+        }
+
+        public async Task<EimzoMobileVerifyResult> VerifyMobileAsync(string documentId, string documentBase64, CancellationToken cancellationToken)
+        {
+            using var request = CreateFormRequest(HttpMethod.Post, "/backend/mobile/verify",
+                new Dictionary<string, string> { ["documentId"] = documentId, ["document"] = documentBase64 });
+            using var json = await SendAsync(request, cancellationToken);
+            var root = json.RootElement;
+            var status = GetStatus(root);
+            if (status == -8)
+                throw new ServiceUnavailableException("Certificate status could not be checked. E-IMZO-SERVER has no connection to the E-IMZO VPN.");
+            var certificate = root.TryGetProperty("subjectCertificateInfo", out var info) && info.ValueKind == JsonValueKind.Object
+                ? ToCertificateInfo(info, ReadStringMap(info, "subjectName"))
+                : null;
+            string? signingTime = null, timestampedTime = null;
+            if (root.TryGetProperty("verificationInfo", out var verification) && verification.ValueKind == JsonValueKind.Object)
+            {
+                signingTime = GetString(verification, "signingTime");
+                timestampedTime = GetString(verification, "timestampedTime");
+            }
+            return new EimzoMobileVerifyResult(status == SuccessStatus, status, DescribeMobileStatus(status, GetString(root, "message")),
+                certificate, GetString(root, "pkcs7Attached"), signingTime, timestampedTime, root.GetRawText());
+        }
+
+        /// <summary>URL-encoded form, as /frontend/mobile/* and /backend/mobile/verify expect.</summary>
+        private HttpRequestMessage CreateFormRequest(HttpMethod method, string path, IReadOnlyDictionary<string, string> fields)
+        {
+            var request = new HttpRequestMessage(method, path)
+            {
+                Content = new FormUrlEncodedContent(fields)
+            };
+            AddCallerHeaders(request);
+            return request;
+        }
+
+        private void AddCallerHeaders(HttpRequestMessage request)
+        {
+            request.Headers.Host = _configuration.SiteHost;
+            request.Headers.TryAddWithoutValidation("X-Real-IP", GetClientIp());
+        }
+
+        private static string DescribeMobileStatus(int status, string? serverMessage) => status switch
+        {
+            1 => "OK",
+            -2 => "The session was not found or has expired. Start again.",
+            -4 => "The phone has not uploaded a valid signature for this session.",
+            -5 => "The signature is invalid.",
+            -6 => "The certificate is invalid.",
+            -7 => "The certificate was not valid at the signing time.",
+            -9 => "Signing time is outside the allowed window. Check the phone clock and sign again.",
+            _ => string.IsNullOrWhiteSpace(serverMessage) ? $"E-IMZO Mobile verification failed (status {status})." : serverMessage
+        };
+
         public Task<EimzoDocumentVerificationResult> VerifyAttachedAsync(string pkcs7Base64, CancellationToken cancellationToken)
             => VerifyAsync("/backend/pkcs7/verify/attached", pkcs7Base64, cancellationToken);
 

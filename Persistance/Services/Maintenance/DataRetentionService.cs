@@ -84,8 +84,21 @@ namespace Persistance.Services.Maintenance
             {
                 var cutoff = now.AddDays(-userDays);
                 // A soft delete sets UpdatedAt, and a deleted user is never edited again.
-                users = await context.Users.IgnoreQueryFilters()
-                    .Where(u => u.IsDeleted && u.UpdatedAt < cutoff && u.FullName != AnonymizedName)
+                var leaving = context.Users.IgnoreQueryFilters()
+                    .Where(u => u.IsDeleted && u.UpdatedAt < cutoff && u.FullName != AnonymizedName);
+                // Their personal documents are removed with them: the rows, and the files from private/ and deleted/private/.
+                var leavingIds = await leaving.Select(u => u.Id).ToListAsync(cancellationToken);
+                if (leavingIds.Count > 0)
+                {
+                    var stored = await context.PrivateDocuments.IgnoreQueryFilters()
+                        .Where(d => leavingIds.Contains(d.OwnerId)).Select(d => d.StoredName).ToListAsync(cancellationToken);
+                    await context.PrivateDocuments.IgnoreQueryFilters().Where(d => leavingIds.Contains(d.OwnerId)).ExecuteDeleteAsync(cancellationToken);
+                    var root = FileStorageLocation.ResolveRootPath(configuration, environment.ContentRootPath);
+                    foreach (var name in stored)
+                        foreach (var folder in new[] { Path.Combine(root, "private"), Path.Combine(root, "deleted", "private") })
+                            TryDelete(Path.Combine(folder, name));
+                }
+                users = await leaving
                     .ExecuteUpdateAsync(s => s
                         .SetProperty(u => u.FullName, AnonymizedName)
                         .SetProperty(u => u.Login, (string?)null)
@@ -100,16 +113,36 @@ namespace Persistance.Services.Maintenance
                         .SetProperty(u => u.UpdatedAt, now), cancellationToken);
             }
 
+            var auditDays = configuration.GetValue("Retention:AuditLogDays", 365);
+            var audit = 0;
+            if (auditDays > 0)
+            {
+                var cutoff = now.AddDays(-auditDays);
+                audit = await context.AuditLogs.IgnoreQueryFilters().Where(a => a.OccurredAt < cutoff).ExecuteDeleteAsync(cancellationToken);
+            }
+
             var files = 0;
             var fileDays = configuration.GetValue("Retention:DeletedFileDays", 90);
             var deleted = Path.Combine(FileStorageLocation.ResolveRootPath(configuration, environment.ContentRootPath), "deleted");
             if (fileDays > 0 && Directory.Exists(deleted))
                 files = PurgeDeletedFiles(deleted, now.AddDays(-fileDays), now);
 
-            if (tokens + users + files > 0)
-                logger.LogInformation("Data retention: {Tokens} refresh token(s) deleted, {Users} deleted user(s) anonymized, {Files} file(s) removed from deleted/",
-                    tokens, users, files);
+            if (tokens + users + files + audit > 0)
+                logger.LogInformation("Data retention: {Tokens} refresh token(s) deleted, {Users} deleted user(s) anonymized, {Files} file(s) removed from deleted/, {Audit} audit entries deleted",
+                    tokens, users, files, audit);
             return (tokens, users, files);
+        }
+
+        private void TryDelete(string path)
+        {
+            try
+            {
+                File.Delete(path);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                logger.LogWarning(ex, "Personal document file {Path} could not be removed; it is tried again next run", path);
+            }
         }
 
         private int PurgeDeletedFiles(string deleted, DateTime cutoff, DateTime now)

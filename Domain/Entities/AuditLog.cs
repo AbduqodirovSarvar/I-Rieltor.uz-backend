@@ -1,51 +1,68 @@
-﻿using Domain.Abstractions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Domain.Abstractions;
+using Domain.Behaviours;
 
 namespace Domain.Entities
 {
     /// <summary>
-    /// Foydalanuvchi amallari jurnali: kim, qachon, qaysi yozuv ustida qanday amal bajargani.
-    /// Xavfsizlik nazorati va nizolarni tekshirish uchun kerak.
+    /// Jurnal yozuvi: kim, qachon, qaysi so'rovni yubordi va natijasi nima bo'ldi. Faqat o'zgartiruvchi so'rovlar
+    /// (POST, PUT, PATCH, DELETE) va shaxsiy hujjatlarni yuklab olish yoziladi. So'rov tanasi va so'rov satri (query)
+    /// yozilmaydi: ularda parol, token va shaxsiy ma'lumotlar bo'lishi mumkin. Yozuv o'zgartirilmaydi;
+    /// eskilari saqlash muddati (Retention:AuditLogDays) o'tgach o'chiriladi.
     /// </summary>
     public class AuditLog : AudiTableEntity
     {
         /// <summary>
-        /// Bajarilgan amal nomi (masalan "UPDATE_USER", "DELETE_SLIDE").
+        /// So'rov yuborilgan vaqt (UTC). CreatedAt yozuv bazaga tushgan vaqt (bir necha soniya keyin).
         /// </summary>
-        public string ActionName { get; set; } = string.Empty;
+        public DateTime OccurredAt { get; set; }
 
         /// <summary>
-        /// Amal bajarilgan yozuvning Id'si.
+        /// So'rov egasi (kirgan bo'lsa). Kirmagan yoki token yaroqsiz bo'lsa null.
         /// </summary>
-        public Guid EntityId { get; set; }
+        public Guid? UserId { get; set; }
 
         /// <summary>
-        /// Amal bajarilgan entity turi nomi (masalan "User", "Slide").
-        /// </summary>
-        public string EntityTypeName { get; set; } = string.Empty;
-
-        /// <summary>
-        /// So'rov yuborilgan IP manzil.
-        /// </summary>
-        public string IpAddress { get; set; } = string.Empty;
-
-        /// <summary>
-        /// So'rov yuborgan brauzer yoki ilova haqidagi ma'lumot (User-Agent sarlavhasi).
-        /// </summary>
-        public string UserAgent {  get; set; } = string.Empty;
-
-        /// <summary>
-        /// Amalni bajargan foydalanuvchining Id'si, matn ko'rinishida.
-        /// </summary>
-        public string UserId { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Amalni bajargan foydalanuvchi (navigatsiya).
+        /// Foydalanuvchi (navigatsiya).
         /// </summary>
         public User? User { get; set; }
+
+        /// <summary>
+        /// Amal: controller va metod nomi (masalan "AuctionController.Publish"). Aniqlanmasa so'rov yo'li.
+        /// </summary>
+        [Searchable]
+        public string Action { get; set; } = string.Empty;
+
+        /// <summary>
+        /// HTTP metodi.
+        /// </summary>
+        public string Method { get; set; } = string.Empty;
+
+        /// <summary>
+        /// So'rov yo'li, query'siz (masalan "/api/auction/publish").
+        /// </summary>
+        [Searchable]
+        public string Path { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Javob kodi. Xatolar (401, 403, 409...) ham yoziladi: hujumlar shu yerda ko'rinadi.
+        /// </summary>
+        public int StatusCode { get; set; }
+
+        /// <summary>
+        /// Mijoz IP manzili (ishonchli proxy orqali kelgan haqiqiy manzil).
+        /// </summary>
+        public string? IpAddress { get; set; }
+
+        public string? UserAgent { get; set; }
+
+        /// <summary>
+        /// So'rov identifikatori (X-Request-ID): server log'lari bilan bog'laydi.
+        /// </summary>
+        public string? CorrelationId { get; set; }
+
+        /// <summary>
+        /// So'rov davomiyligi, millisekund.
+        /// </summary>
+        public int DurationMs { get; set; }
     }
 }

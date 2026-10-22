@@ -1,4 +1,5 @@
 ﻿using WebApi.Converters;
+using WebApi.Middlewares;
 using WebApi.Monitoring;
 using Serilog.Formatting.Compact;
 using Serilog;
@@ -11,7 +12,9 @@ using Persistance.Extentions;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.RateLimiting;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using WebApi.Handlers;
+using WebApi.Hubs;
 
 namespace WebApi.Extentions
 {
@@ -20,6 +23,7 @@ namespace WebApi.Extentions
         public const string CorsPolicy = "Frontend";
         public const string AuthRateLimitPolicy = "auth";
         public const string SessionRateLimitPolicy = "session";
+        public const string BidRateLimitPolicy = "bid";
 
         public static void AdApiDepencies(this WebApplicationBuilder builder)
         {
@@ -34,7 +38,11 @@ namespace WebApi.Extentions
             builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
             builder.Services.AddProblemDetails();
             builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddControllers(options => options.ModelBinderProviders.Insert(0, new UtcDateTimeModelBinderProvider()))
+            builder.Services.AddControllers(options =>
+                {
+                    options.ModelBinderProviders.Insert(0, new UtcDateTimeModelBinderProvider());
+                    options.Filters.Add<AuditActionFilter>();
+                })
                 .AddJsonOptions(options =>
                 {
                     options.JsonSerializerOptions.Converters.Add(new UtcDateTimeJsonConverter());
@@ -53,6 +61,7 @@ namespace WebApi.Extentions
                         "One or more validation errors occurred.", errors, System.Net.HttpStatusCode.BadRequest));
                 });
             builder.AddUploadSizeLimits();
+            builder.AddAuctionHub();
         }
 
         /// <summary>
@@ -66,7 +75,9 @@ namespace WebApi.Extentions
             {
                 policy.WithOrigins(allowedOrigins)
                       .AllowAnyMethod()
-                      .AllowAnyHeader();
+                      .AllowAnyHeader()
+                      // SignalR's negotiate request sends credentials; the origins are listed, never a wildcard.
+                      .AllowCredentials();
             }));
 
             return services;
@@ -149,6 +160,7 @@ namespace WebApi.Extentions
             // Per minute and client; configurable for load tests and the integration tests.
             var authPermits = configuration.GetValue("RateLimiting:AuthPermitPerMinute", 10);
             var sessionPermits = configuration.GetValue("RateLimiting:SessionPermitPerMinute", 30);
+            var bidPermits = configuration.GetValue("RateLimiting:BidPermitPer10Seconds", 20);
             services.AddRateLimiter(options =>
             {
                 options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -173,6 +185,16 @@ namespace WebApi.Extentions
                 // E-IMZO challenges, token refresh and logout cannot be used to guess credentials
                 // (each needs a signature or a 512-bit token), but every active user calls them;
                 // a separate, looser limit keeps them from eating the sign-in budget of a shared office IP.
+                // Bids: per signed-in user (a shared office IP does not share one budget), per IP for the rest.
+                options.AddPolicy(BidRateLimitPolicy, httpContext =>
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? ClientPartitionKey(httpContext),
+                        _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = bidPermits,
+                            Window = TimeSpan.FromSeconds(10),
+                            QueueLimit = 0
+                        }));
                 options.AddPolicy(SessionRateLimitPolicy, httpContext =>
                     RateLimitPartition.GetFixedWindowLimiter(
                         ClientPartitionKey(httpContext),
@@ -209,6 +231,23 @@ namespace WebApi.Extentions
                 else
                     logger.WriteTo.Console(new RenderedCompactJsonFormatter());
             });
+        }
+
+        /// <summary>
+        /// Live auctions: SignalR hub at /hubs/auction, enums as names like the rest of the API, and, so that watchers of an
+        /// instance also see the bids placed on another one, the Redis backplane (SignalR:RedisBackplane, default on).
+        /// </summary>
+        private static void AddAuctionHub(this WebApplicationBuilder builder)
+        {
+            var signalR = builder.Services.AddSignalR()
+                .AddJsonProtocol(options => options.PayloadSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
+            if (builder.Configuration.GetValue("SignalR:RedisBackplane", true))
+                signalR.AddStackExchangeRedis(builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379", options =>
+                {
+                    options.Configuration.ChannelPrefix = StackExchange.Redis.RedisChannel.Literal("irieltor");
+                    options.Configuration.AbortOnConnectFail = false;
+                });
+            builder.Services.Replace(ServiceDescriptor.Singleton<Application.Interfaces.Auctions.IAuctionEvents, SignalRAuctionEvents>());
         }
 
         private static IServiceCollection AddSwagger(this IServiceCollection services)

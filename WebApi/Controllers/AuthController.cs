@@ -1,4 +1,5 @@
 ﻿using Application.Features.Auths.Commands.ChangePassword;
+using Application.Features.Auths.Commands.EimzoLinkAndMobile;
 using Application.Features.Auths.Commands.Login;
 using Application.Features.Auths.Commands.LoginViaEimzo;
 using Application.Features.Auths.Commands.Logout;
@@ -87,6 +88,75 @@ namespace WebApi.Controllers
             var result = await _mediator.Send(command);
             return Ok(result);
         }
+
+        // ---- E-IMZO Mobile / ID-card: the key is on the phone. Start a session, show the QR code or deeplink
+        // (built by the frontend with e-imzo-mobile.js from siteId, documentId and the hash of the challenge or document),
+        // poll the status, then finish with the documentId.
+
+        /// <summary>
+        /// Starts a sign-in session: <c>{ siteId, documentId, challenge }</c>. The QR code is siteId + documentId + GOST hash of
+        /// the challenge + CRC32 (see e-imzo-mobile.js).
+        /// </summary>
+        [HttpPost("eimzo/mobile/auth/start")]
+        [EnableRateLimiting(DepencyInjection.SessionRateLimitPolicy)]
+        public async Task<IActionResult> StartEimzoMobileAuth()
+        {
+            Response.Headers.CacheControl = "no-store";
+            return Ok(await _mediator.Send(new StartEimzoMobileAuthCommand(), HttpContext.RequestAborted));
+        }
+
+        /// <summary>
+        /// Starts a session for signing a document on the phone (for example the auction application).
+        /// </summary>
+        [HttpPost("eimzo/mobile/sign/start")]
+        [Authorize]
+        [EnableRateLimiting(DepencyInjection.SessionRateLimitPolicy)]
+        public async Task<IActionResult> StartEimzoMobileSign()
+        {
+            Response.Headers.CacheControl = "no-store";
+            return Ok(await _mediator.Send(new StartEimzoMobileSignCommand(), HttpContext.RequestAborted));
+        }
+
+        /// <summary>
+        /// Poll every 1–2 seconds: status 2 = waiting for the phone, 1 = signed (finish with the documentId), -2 = expired.
+        /// </summary>
+        [HttpGet("eimzo/mobile/status")]
+        [DisableRateLimiting]
+        public async Task<IActionResult> GetEimzoMobileStatus([FromQuery] GetEimzoMobileStatusQuery query)
+        {
+            Response.Headers.CacheControl = "no-store";
+            return Ok(await _mediator.Send(query, HttpContext.RequestAborted));
+        }
+
+        [HttpPost("sign-in-via-eimzo-mobile")]
+        public async Task<IActionResult> SignInViaEimzoMobile([FromBody] SignInViaEimzoMobileCommand command)
+            => Ok(await _mediator.Send(command));
+
+        [HttpPost("sign-up-via-eimzo-mobile")]
+        public async Task<IActionResult> SignUpViaEimzoMobile([FromBody] SignUpViaEimzoMobileCommand command)
+            => Ok(await _mediator.Send(command));
+
+        [HttpPost("reset-password-via-eimzo-mobile")]
+        public async Task<IActionResult> ResetPasswordViaEimzoMobile([FromBody] ResetPasswordViaEimzoMobileCommand command)
+            => Ok(await _mediator.Send(command));
+
+        /// <summary>
+        /// Links the E-IMZO key that signed the challenge (GET api/auth/eimzo/challenge) to the signed-in account:
+        /// PINFL or INN, account type and organisation name come from the certificate. After that the account can
+        /// take part in auctions. One key per account and one account per key.
+        /// </summary>
+        [HttpPost("me/eimzo")]
+        [Authorize]
+        public async Task<IActionResult> LinkEimzo([FromBody] LinkEimzoCommand command)
+            => Ok(await _mediator.Send(command));
+
+        /// <summary>
+        /// The same with the key on the phone: <c>documentId</c> of a finished sign-in session.
+        /// </summary>
+        [HttpPost("me/eimzo-mobile")]
+        [Authorize]
+        public async Task<IActionResult> LinkEimzoMobile([FromBody] LinkEimzoMobileCommand command)
+            => Ok(await _mediator.Send(command));
 
         /// <summary>
         /// Exchanges a refresh token for a new access token and a new refresh token; the old one stops working.

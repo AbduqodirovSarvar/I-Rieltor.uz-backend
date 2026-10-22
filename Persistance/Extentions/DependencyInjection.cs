@@ -1,4 +1,5 @@
-﻿using Persistance.Services.Maintenance;
+﻿using Application.Interfaces.Auditing;
+using Persistance.Services.Maintenance;
 using Persistance.Services.Health;
 using Application.Authorization;
 using Application.Interfaces.Auths;
@@ -56,6 +57,11 @@ namespace Persistance.Extentions
             services.AddScoped<IBidRepository, BidRepository>();
             services.AddScoped<IAuctionResultRepository, AuctionResultRepository>();
             services.AddScoped<IAuctionAwardRepository, AuctionAwardRepository>();
+            services.AddScoped<INotificationRepository, NotificationRepository>();
+            services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+            services.AddScoped<IPrivateDocumentRepository, PrivateDocumentRepository>();
+            services.AddScoped<IPaymentRepository, PaymentRepository>();
+            services.AddScoped<Application.Interfaces.Dashboard.IDashboardReader, Persistance.Services.Dashboard.DashboardReader>();
             services.AddSingleton<IHashService, HashService>();
             services.AddSingleton<ITokenService, TokenService>();
             // A typo in a number (e.g. TokenHours=0) stops the app at start, not at the first email or sign-in.
@@ -82,6 +88,11 @@ namespace Persistance.Extentions
                     configuration.GetValue("FileStorage:MaxFileSizeMb", 20));
             });
 
+            services.AddScoped<IPrivateFileStore>(provider =>
+                new PrivateFileStore(
+                    FileStorageLocation.ResolveRootPath(configuration, provider.GetRequiredService<IHostEnvironment>().ContentRootPath),
+                    configuration.GetValue("PrivateFiles:MaxFileSizeMb", 10)));
+
             services.AddHostedService<OrphanFileCleanupService>();
             services.AddHostedService<AuctionLifecycleBackgroundService>();
             // Singleton as well, so a test or an admin task can run one pass (RunOnceAsync).
@@ -97,6 +108,22 @@ namespace Persistance.Extentions
                     .ValidateDataAnnotations().ValidateOnStart();
             services.Configure<DefaultAdminConfiguration>(configuration.GetSection(DefaultAdminConfiguration.SectionName));
             services.AddScoped<IEmailService, EmailService>();
+
+            services.AddOptions<EskizConfiguration>().Bind(configuration.GetSection(EskizConfiguration.SectionName))
+                    .ValidateDataAnnotations().ValidateOnStart();
+            services.AddSingleton<EskizTokenStore>();
+            services.AddHttpClient<ISmsSender, EskizSmsSender>((serviceProvider, client) =>
+            {
+                var eskiz = serviceProvider.GetRequiredService<IOptions<EskizConfiguration>>().Value;
+                client.BaseAddress = new Uri(eskiz.BaseUrl);
+                client.Timeout = TimeSpan.FromSeconds(eskiz.TimeoutSeconds);
+            });
+            services.AddHostedService<NotificationBackgroundService>();
+
+            // One instance is both the queue the middleware writes to and the hosted service that empties it.
+            services.AddSingleton<AuditLogWriterService>();
+            services.AddSingleton<IAuditLogQueue>(sp => sp.GetRequiredService<AuditLogWriterService>());
+            services.AddHostedService(sp => sp.GetRequiredService<AuditLogWriterService>());
 
             services.AddSingleton<IConnectionMultiplexer>(sp =>
             {

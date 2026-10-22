@@ -1,3 +1,5 @@
+using Application.Interfaces.Payments;
+using Application.Interfaces.Auctions;
 using Application.Exceptions;
 using Application.Interfaces.Auths;
 using Application.Interfaces.EntityServices;
@@ -24,6 +26,8 @@ namespace Application.Services.EntityServices
         IBidRepository bidRepository,
         IAuctionResultRepository resultRepository,
         IAuctionAwardRepository awardRepository,
+        IAuctionEvents events,
+        IAuctionSettlement settlement,
         IUnitOfWork unitOfWork)
         : GenericEntityService<Auction,
                                CreateAuctionDto,
@@ -39,6 +43,8 @@ namespace Application.Services.EntityServices
         private readonly IAuctionResultRepository _resultRepository = resultRepository;
         private readonly IAuctionAwardRepository _awardRepository = awardRepository;
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
+        private readonly IAuctionEvents _events = events;
+        private readonly IAuctionSettlement _settlement = settlement;
 
         public override Task<ResponseModel<AuctionViewModel>> CreateAsync(CreateAuctionDto dto, CancellationToken cancellationToken = default)
             => _unitOfWork.ExecuteAsync(async () =>
@@ -122,6 +128,7 @@ namespace Application.Services.EntityServices
                 await _repository.UpdateAsync(auction, cancellationToken);
                 property.Status = PropertyStatus.IN_AUCTION;
                 await _propertyRepository.UpdateAsync(property, cancellationToken);
+                await _unitOfWork.AfterCommitAsync(() => _events.StatusChangedAsync(new AuctionStatusChangedEvent(auction.Id, auction.Status, auction.EndsAt)));
                 return ResponseModel<AuctionViewModel>.Ok(_mapper.Map<AuctionViewModel>(auction));
             }, cancellationToken);
 
@@ -150,6 +157,8 @@ namespace Application.Services.EntityServices
                     property.Status = PropertyStatus.PUBLISHED;
                     await _propertyRepository.UpdateAsync(property, cancellationToken);
                 }
+                await _settlement.OnCancelledAsync(auction, auction.CancelReason, cancellationToken);
+                await _unitOfWork.AfterCommitAsync(() => _events.StatusChangedAsync(new AuctionStatusChangedEvent(auction.Id, auction.Status, auction.EndsAt)));
                 return ResponseModel<AuctionViewModel>.Ok(_mapper.Map<AuctionViewModel>(auction));
             }, cancellationToken);
 
@@ -202,6 +211,7 @@ namespace Application.Services.EntityServices
                 Title = auction.Title,
                 Description = auction.Description,
                 ExtensionMinutes = auction.ExtensionMinutes,
+                MinNextBid = BidService.MinNextBid(auction),
                 PropertyId = auction.PropertyId,
                 PropertyTitle = propertyTitle,
                 ParticipantCount = participants,
@@ -224,15 +234,17 @@ namespace Application.Services.EntityServices
         /// A property can have only one live auction (the unique index), so a second one is a 409 here already.
         /// </summary>
         private async Task<Property> EnsureValidAsync(CreateAuctionDto dto, Guid? selfId, CancellationToken cancellationToken)
-            => await EnsureValidAsync(dto.PropertyId, dto.ApplicationDeadline, dto.StartsAt, dto.EndsAt, selfId, cancellationToken);
+            => await EnsureValidAsync(dto.PropertyId, dto.StartingPrice, dto.DepositAmount, dto.ApplicationDeadline, dto.StartsAt, dto.EndsAt, selfId, cancellationToken);
 
         private async Task<Property> EnsureValidAsync(UpdateAuctionDto dto, Guid? selfId, CancellationToken cancellationToken)
-            => await EnsureValidAsync(dto.PropertyId, dto.ApplicationDeadline, dto.StartsAt, dto.EndsAt, selfId, cancellationToken);
+            => await EnsureValidAsync(dto.PropertyId, dto.StartingPrice, dto.DepositAmount, dto.ApplicationDeadline, dto.StartsAt, dto.EndsAt, selfId, cancellationToken);
 
-        private async Task<Property> EnsureValidAsync(Guid propertyId, DateTime applicationDeadline, DateTime startsAt, DateTime endsAt, Guid? selfId, CancellationToken cancellationToken)
+        private async Task<Property> EnsureValidAsync(Guid propertyId, decimal startingPrice, decimal depositAmount, DateTime applicationDeadline, DateTime startsAt, DateTime endsAt, Guid? selfId, CancellationToken cancellationToken)
         {
             if (applicationDeadline > startsAt)
                 throw new BadRequestException("Applications must close before the sale starts (ApplicationDeadline <= StartsAt).");
+            if (depositAmount >= startingPrice)
+                throw new BadRequestException("The deposit must be less than the starting price: it counts towards the price.");
             if (endsAt - startsAt < MinDuration)
                 throw new BadRequestException($"The sale must last at least {MinDuration.TotalMinutes:0} minutes.");
             if (startsAt <= DateTime.UtcNow)

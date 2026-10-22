@@ -7,6 +7,7 @@ using Application.Interfaces.Repositories;
 using Application.Models.Dtos.Auths;
 using Application.Models.Results;
 using Application.Models.ViewModels.Auths;
+using Application.Models.ViewModels.Users;
 using Application.Notifications;
 using MapsterMapper;
 using Domain.Constants;
@@ -118,8 +119,13 @@ namespace Application.Services.Auths
         }
 
         public async Task<TokenViewModel> LoginViaEimzoAsync(LoginViaEimzoDto loginDto, CancellationToken cancellationToken)
+            => await LoginWithCertificateAsync(await AuthenticateWithEimzoAsync(loginDto.SignedData, cancellationToken), cancellationToken);
+
+        public async Task<TokenViewModel> LoginViaEimzoMobileAsync(string documentId, CancellationToken cancellationToken)
+            => await LoginWithCertificateAsync(await AuthenticateMobileWithEimzoAsync(documentId, cancellationToken), cancellationToken);
+
+        private async Task<TokenViewModel> LoginWithCertificateAsync(EimzoCertificateInfo certificate, CancellationToken cancellationToken)
         {
-            var certificate = await AuthenticateWithEimzoAsync(loginDto.SignedData, cancellationToken);
             var identifier = GetEimzoAccountIdentifier(certificate);
 
             var user = await _userRepository
@@ -202,8 +208,13 @@ namespace Application.Services.Auths
         private sealed record SessionToken(Guid TokenId, Guid SessionId, DateTime SessionExpiresAt);
 
         public async Task<bool> RegisterViaEimzoAsync(RegisterViaEimzoDto registerDto, CancellationToken cancellationToken)
+            => await RegisterWithCertificateAsync(await AuthenticateWithEimzoAsync(registerDto.SignedData, cancellationToken), cancellationToken);
+
+        public async Task<bool> RegisterViaEimzoMobileAsync(string documentId, CancellationToken cancellationToken)
+            => await RegisterWithCertificateAsync(await AuthenticateMobileWithEimzoAsync(documentId, cancellationToken), cancellationToken);
+
+        private async Task<bool> RegisterWithCertificateAsync(EimzoCertificateInfo certificate, CancellationToken cancellationToken)
         {
-            var certificate = await AuthenticateWithEimzoAsync(registerDto.SignedData, cancellationToken);
             var identifier = GetEimzoAccountIdentifier(certificate);
 
             if (await _userRepository.ExistsWithAnyAsync(null, null, identifier, null, cancellationToken: cancellationToken))
@@ -324,14 +335,19 @@ namespace Application.Services.Auths
         /// Also lets users who registered through E-IMZO add a password.
         /// </summary>
         public async Task<bool> ResetViaEimzoAsync(ResetPasswordByEImzoDto resetPasswordDto, CancellationToken cancellationToken)
+            => await ResetWithCertificateAsync(await AuthenticateWithEimzoAsync(resetPasswordDto.SignedData, cancellationToken), resetPasswordDto.NewPassword, cancellationToken);
+
+        public async Task<bool> ResetViaEimzoMobileAsync(string documentId, string newPassword, CancellationToken cancellationToken)
+            => await ResetWithCertificateAsync(await AuthenticateMobileWithEimzoAsync(documentId, cancellationToken), newPassword, cancellationToken);
+
+        private async Task<bool> ResetWithCertificateAsync(EimzoCertificateInfo certificate, string newPassword, CancellationToken cancellationToken)
         {
-            var certificate = await AuthenticateWithEimzoAsync(resetPasswordDto.SignedData, cancellationToken);
             var identifier = GetEimzoAccountIdentifier(certificate);
 
             var user = await _userRepository.GetAsync(x => x.INNPINFL == identifier, cancellationToken)
                             ?? throw new NotFoundException("User not registered.");
 
-            user.PasswordHash = _hashService.Hash(resetPasswordDto.NewPassword);
+            user.PasswordHash = _hashService.Hash(newPassword);
 
             // The new password and the end of the old sessions commit together: never one without the other.
             return await _unitOfWork.ExecuteAsync(async () =>
@@ -436,6 +452,50 @@ namespace Application.Services.Auths
                 await _userRepository.UpdateAsync(user, cancellationToken);
             }
             return true;
+        }
+
+        public async Task<UserViewModel> LinkEimzoAsync(string signedData, CancellationToken cancellationToken)
+            => await LinkAsync(await AuthenticateWithEimzoAsync(signedData, cancellationToken), cancellationToken);
+
+        public async Task<UserViewModel> LinkEimzoMobileAsync(string documentId, CancellationToken cancellationToken)
+            => await LinkAsync(await AuthenticateMobileWithEimzoAsync(documentId, cancellationToken), cancellationToken);
+
+        /// <summary>
+        /// A signature proves the person holds the key, so it may set PINFL/INN where the admin forms may not.
+        /// One key per account and one account per key; unlinking is not offered (it would let a stolen session
+        /// detach the account from its owner's key).
+        /// </summary>
+        private async Task<UserViewModel> LinkAsync(EimzoCertificateInfo certificate, CancellationToken cancellationToken)
+        {
+            var user = await GetSignedInUserAsync(cancellationToken);
+            var identifier = GetEimzoAccountIdentifier(certificate);
+
+            if (user.INNPINFL != null)
+            {
+                if (user.INNPINFL == identifier)
+                    return _mapper.Map<UserViewModel>(user);
+                throw new ConflictException("This account is already linked to another E-IMZO key.");
+            }
+            if (await _userRepository.AnyAsync(u => u.INNPINFL == identifier && u.Id != user.Id, cancellationToken))
+                throw new ConflictException("This E-IMZO key is already linked to another account.");
+
+            user.INNPINFL = identifier;
+            user.Type = certificate.IsLegalEntity ? ClientType.LEGAL : ClientType.INDIVIDUAL;
+            if (certificate.IsLegalEntity && !string.IsNullOrWhiteSpace(certificate.Organization))
+                user.LegalName = certificate.Organization;
+            await _userRepository.UpdateAsync(user, cancellationToken);
+            return _mapper.Map<UserViewModel>(user);
+        }
+
+        /// <summary>
+        /// Reads the signer of a finished E-IMZO Mobile sign-in session.
+        /// </summary>
+        private async Task<EimzoCertificateInfo> AuthenticateMobileWithEimzoAsync(string documentId, CancellationToken cancellationToken)
+        {
+            var result = await _eimzoService.AuthenticateMobileAsync(documentId, cancellationToken);
+            if (!result.IsSuccess || result.Certificate == null)
+                throw new UnauthenticatedException($"E-IMZO: {result.Message}");
+            return result.Certificate;
         }
 
         private async Task<User> GetSignedInUserAsync(CancellationToken cancellationToken)

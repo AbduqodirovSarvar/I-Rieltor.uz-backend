@@ -30,6 +30,9 @@ namespace Persistance.Data
         public virtual DbSet<Bid> Bids { get; set; }
         public virtual DbSet<AuctionResult> AuctionResults { get; set; }
         public virtual DbSet<AuctionAward> AuctionAwards { get; set; }
+        public virtual DbSet<Notification> Notifications { get; set; }
+        public virtual DbSet<AuditLog> AuditLogs { get; set; }
+        public virtual DbSet<PrivateDocument> PrivateDocuments { get; set; }
         public virtual DbSet<Payment> Payments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

@@ -137,7 +137,7 @@ namespace Persistance.Services.Files
         private static readonly byte[] Mp4BoxType = "ftyp"u8.ToArray();
         private static readonly byte[] Id3Signature = "ID3"u8.ToArray();
 
-        private static async Task<bool> HasExpectedSignatureAsync(IFormFile file, FileMimeType mimeType)
+        internal static async Task<bool> HasExpectedSignatureAsync(IFormFile file, FileMimeType mimeType)
         {
             var header = new byte[12];
             await using var stream = file.OpenReadStream();
@@ -163,7 +163,7 @@ namespace Persistance.Services.Files
             };
         }
 
-        private static FileMimeType GetMimeType(string extension)
+        internal static FileMimeType GetMimeType(string extension)
         {
             return extension.ToLower() switch
             {

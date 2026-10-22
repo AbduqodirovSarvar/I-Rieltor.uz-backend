@@ -10,6 +10,10 @@ namespace Domain.Enums
         /// </summary>
         AWAITING_PAYMENT,
         /// <summary>
+        /// G'olib to'lamadi: obyekt ikkinchi o'rindagi ishtirokchiga taklif qilingan, uning javobi kutilmoqda. Xaridor hali yo'q.
+        /// </summary>
+        AWAITING_RUNNER_UP,
+        /// <summary>
         /// Xaridor to'lagan, obyekt sotilgan.
         /// </summary>
         SOLD,

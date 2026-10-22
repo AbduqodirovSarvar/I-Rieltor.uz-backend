@@ -66,6 +66,33 @@ namespace Persistance.Services.Files
                         .ToHashSet(StringComparer.Ordinal);
 
             var moved = 0;
+            // Private documents live in <root>/private (flat); the same rule: no record, old enough → deleted/orphans/private.
+            var privateFolder = Path.Combine(root, "private");
+            if (Directory.Exists(privateFolder))
+            {
+                var knownPrivate = (await context.PrivateDocuments.IgnoreQueryFilters().AsNoTracking()
+                                        .Select(d => d.StoredName).ToListAsync(cancellationToken))
+                                   .ToHashSet(StringComparer.Ordinal);
+                foreach (var path in Directory.EnumerateFiles(privateFolder))
+                {
+                    var name = Path.GetFileName(path);
+                    if (knownPrivate.Contains(name) || DateTime.UtcNow - File.GetLastWriteTimeUtc(path) < minAge)
+                        continue;
+                    try
+                    {
+                        var target = Path.Combine(root, "deleted", "orphans", "private");
+                        Directory.CreateDirectory(target);
+                        File.Move(path, Path.Combine(target, name), overwrite: true);
+                        File.SetLastWriteTimeUtc(Path.Combine(target, name), DateTime.UtcNow);
+                        moved++;
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                    {
+                        logger.LogWarning(ex, "Orphan private file {Path} could not be moved; it is tried again next run", path);
+                    }
+                }
+            }
+
             foreach (var path in Directory.EnumerateFiles(uploads, "*", SearchOption.AllDirectories))
             {
                 var name = Path.GetFileName(path);

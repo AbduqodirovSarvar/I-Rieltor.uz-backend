@@ -1,4 +1,5 @@
-﻿using WebApi.Middlewares;
+﻿using WebApi.Hubs;
+using WebApi.Middlewares;
 using Serilog.Events;
 using Serilog;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -27,6 +28,8 @@ namespace WebApi.Extentions
                     : exception != null || context.Response.StatusCode >= 500 ? LogEventLevel.Error
                     : LogEventLevel.Information;
             });
+            // Outside the exception handler: it records the status the client really got.
+            app.UseMiddleware<AuditLogMiddleware>();
             app.UseExceptionHandler();
 
             // API documentation is exposed only on developer machines.
@@ -46,6 +49,7 @@ namespace WebApi.Extentions
             app.UseAuthorization();
             app.UseRateLimiter();
             app.MapControllers();
+            app.MapHub<AuctionHub>("/hubs/auction");
             // live: the process answers (no dependencies); ready: the database too (used by the Docker healthcheck).
             app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
             app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") });

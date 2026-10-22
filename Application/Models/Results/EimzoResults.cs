@@ -9,6 +9,35 @@ namespace Application.Models.Results
     public sealed record EimzoChallengeResult(string Challenge, int TtlSeconds);
 
     /// <summary>
+    /// A started E-IMZO Mobile session. The frontend builds the QR code / deeplink from <see cref="SiteId"/>, <see cref="DocumentId"/>
+    /// and the hash of the challenge (sign-in) or of the document (signing) with e-imzo-mobile.js, and polls the status.
+    /// </summary>
+    public sealed record EimzoMobileSession(string SiteId, string DocumentId, string? Challenge);
+
+    /// <summary>
+    /// Where an E-IMZO Mobile session stands. <see cref="Status"/> is the E-IMZO-SERVER code:
+    /// 1 = the phone has uploaded the signature, 2 = not yet (keep polling), -2 = unknown or expired.
+    /// </summary>
+    public sealed record EimzoMobileStatusResult(int Status, string Message)
+    {
+        public bool IsReady => Status == 1;
+        public bool IsPending => Status == 2;
+    }
+
+    /// <summary>
+    /// Result of verifying a document signed on the phone (/backend/mobile/verify).
+    /// </summary>
+    public sealed record EimzoMobileVerifyResult(
+        bool IsSuccess,
+        int Status,
+        string Message,
+        EimzoCertificateInfo? Certificate,
+        string? Pkcs7Attached,
+        string? SigningTime,
+        string? TimestampedTime,
+        string RawResponse);
+
+    /// <summary>
     /// Owner data read from an E-IMZO certificate.
     /// </summary>
     public sealed record EimzoCertificateInfo

@@ -34,6 +34,8 @@ namespace Application.Models.ViewModels.Public
         public string Title { get; init; } = string.Empty;
         public string? Description { get; init; }
         public int ExtensionMinutes { get; init; }
+        /// <summary>The least the next bid can be: the starting price before any bid, then the current price plus the step.</summary>
+        public decimal MinNextBid { get; init; }
         public Guid PropertyId { get; init; }
         public string PropertyTitle { get; init; } = string.Empty;
         /// <summary>Tasdiqlangan ishtirokchilar soni.</summary>

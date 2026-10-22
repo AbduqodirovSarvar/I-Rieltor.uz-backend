@@ -67,6 +67,17 @@ namespace Domain.Entities
         public string? ProviderTransactionId { get; set; }
 
         /// <summary>
+        /// To'lov tizimida tranzaksiya yaratilgan vaqt (UTC): Payme'ning create_time'i; Click'da prepare vaqti
+        /// (uning millisekundi merchant_prepare_id bo'ladi). Payme tranzaksiyasi 12 soatdan keyin bekor qilinadi.
+        /// </summary>
+        public DateTime? ProviderCreatedAt { get; set; }
+
+        /// <summary>
+        /// To'lov tizimi yuborgan bekor qilish sababi (Payme reason kodi).
+        /// </summary>
+        public int? ProviderReason { get; set; }
+
+        /// <summary>
         /// To'langan (qaytarilgan) vaqt.
         /// </summary>
         public DateTime? PaidAt { get; set; }

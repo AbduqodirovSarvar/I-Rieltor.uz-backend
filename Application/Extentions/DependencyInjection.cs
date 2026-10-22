@@ -1,4 +1,10 @@
 ﻿using Application.Behaviours;
+using Application.Models.Configuration;
+using Microsoft.Extensions.Configuration;
+using Application.Interfaces.Notifications;
+using Application.Interfaces.Payments;
+using Application.Services.Payments;
+using Application.Services.Notifications;
 using Application.Interfaces.Auctions;
 using Application.Services.Auctions;
 using Application.Messaging;
@@ -11,6 +17,7 @@ using Application.Mappings;
 using Application.Services.Auths;
 using Application.Services.EntityServices;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -37,6 +44,21 @@ namespace Application.Extentions
             services.AddScoped<IPropertyService, PropertyService>();
             services.AddScoped<IAuctionService, AuctionService>();
             services.AddScoped<IAuctionLifecycleService, AuctionLifecycleService>();
+            services.AddScoped<IPrivateDocumentService, PrivateDocumentService>();
+            services.AddScoped<IParticipationService, ParticipationService>();
+            services.AddScoped<IBidService, BidService>();
+            services.AddSingleton(sp => sp.GetRequiredService<IConfiguration>().GetSection(PaymentSettings.SectionName).Get<PaymentSettings>() ?? new PaymentSettings());
+            services.AddScoped<IAuctionSettlement, AuctionSettlement>();
+            services.AddScoped<IPaymentProcessor, PaymentProcessor>();
+            services.AddScoped<IPaymentService, PaymentService>();
+            services.AddScoped<IPaymeMerchantService, PaymeMerchantService>();
+            services.AddScoped<IClickShopService, ClickShopService>();
+            // Replaced by the SignalR implementation in the web host.
+            services.TryAddSingleton<IAuctionEvents, NullAuctionEvents>();
+            services.AddScoped<IDepositRefundService, DepositRefundService>();
+            services.AddScoped<INotificationService, NotificationService>();
+            services.AddScoped<INotificationDispatcher, NotificationDispatcher>();
+            services.AddScoped<NotificationSender>();
             services.AddScoped<AuctionTransitions>();
 
             // ServiceMapper (not the plain Mapper) gives mapping rules the request's services (MapContext.Current.GetService).
