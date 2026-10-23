@@ -4,6 +4,8 @@ using Application.Models.ViewModels.Participation;
 
 namespace Application.Interfaces.EntityServices
 {
+    public sealed record SignedApplicationFile(byte[] Content, string FileName);
+
     public interface IParticipationService
     {
         /// <summary>The application text the signed-in user signs for the auction.</summary>
@@ -22,6 +24,9 @@ namespace Application.Interfaces.EntityServices
 
         /// <summary>Staff: applications with the applicant's data.</summary>
         Task<ResponseModel<List<ParticipantAdminViewModel>>> GetListAsync(BaseGetListQuery query, CancellationToken cancellationToken = default);
+
+        /// <summary>Staff: the E-IMZO signature (PKCS#7) of an application, as the file the applicant signed.</summary>
+        Task<SignedApplicationFile> GetSignedApplicationAsync(Guid participantId, CancellationToken cancellationToken = default);
 
         Task<ResponseModel<ParticipantAdminViewModel>> ApproveAsync(Guid participantId, CancellationToken cancellationToken = default);
 

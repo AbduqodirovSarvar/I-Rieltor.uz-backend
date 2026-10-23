@@ -23,7 +23,12 @@ namespace Application.Models.ViewModels.Auctions
         public string? CancelReason { get; set; }
         /// <summary>Faqat bitta auksionni ochganda to'ldiriladi, va faqat savdo tugagan bo'lsa.</summary>
         public AuctionResultViewModel? Result { get; set; }
+        /// <summary>Faqat bitta auksionni ochganda to'ldiriladi (xodim ko'radi).</summary>
+        public ParticipantCountsViewModel? ParticipantCounts { get; set; }
     }
+
+    /// <summary>Arizalar soni holati bo'yicha; <c>DepositPaid</c> zakalat to'lagan (hali qaytarilmagan va musodara qilinmagan) ishtirokchilar.</summary>
+    public record ParticipantCountsViewModel(int Total, int Pending, int Approved, int Rejected, int Withdrawn, int DepositPaid);
 
     public record AuctionResultViewModel : BaseViewModel
     {

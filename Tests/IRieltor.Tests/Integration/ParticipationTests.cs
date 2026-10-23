@@ -291,6 +291,22 @@ namespace IRieltor.Tests.Integration
             Assert.Contains(byName, x => x!["userId"]!.GetValue<string>() == first.UserId.ToString());
             Assert.Empty((await Ok(await admin.GetAsync($"api/participation/list?Filters%5BauctionId.equals%5D={id}&SearchText=zzzz-nobody")))["data"]!.AsArray());
 
+            // The auction page counts the applications for the staff.
+            var counts = (await Ok(await admin.GetAsync($"api/auction?Id={id}")))["data"]!["participantCounts"]!;
+            Assert.Equal(2, counts["total"]!.GetValue<int>());
+            Assert.Equal(1, counts["pending"]!.GetValue<int>());
+            Assert.Equal(1, counts["approved"]!.GetValue<int>());
+            Assert.Equal(0, counts["depositPaid"]!.GetValue<int>());
+
+            // The signature can be downloaded by the staff as a file (the text that was signed is inside), not by the applicant.
+            var download = await admin.GetAsync($"api/participation/signed-application?Id={first.ParticipantId}");
+            Assert.Equal(HttpStatusCode.OK, download.StatusCode);
+            Assert.Equal("application/pkcs7-signature", download.Content.Headers.ContentType!.MediaType);
+            Assert.Contains(".p7s", download.Content.Headers.ContentDisposition!.FileName);
+            Assert.Contains("|TS", System.Text.Encoding.UTF8.GetString(await download.Content.ReadAsByteArrayAsync()));
+            Assert.Equal(HttpStatusCode.Forbidden, (await first.Client.GetAsync($"api/participation/signed-application?Id={first.ParticipantId}")).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync($"api/participation/signed-application?Id={Guid.NewGuid()}")).StatusCode);
+
             Assert.Equal(HttpStatusCode.Forbidden, (await first.Client.GetAsync("api/participation/list")).StatusCode);
             Assert.Equal(HttpStatusCode.Forbidden, (await first.Client.PostAsJsonAsync("api/participation/approve", new { id = first.ParticipantId })).StatusCode);
             Assert.Equal(HttpStatusCode.Unauthorized, (await api.CreateClient().GetAsync("api/participation/my")).StatusCode);

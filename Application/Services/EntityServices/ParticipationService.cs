@@ -163,6 +163,21 @@ namespace Application.Services.EntityServices
             return ResponseModel<List<ParticipantAdminViewModel>>.Ok(views, query.PageIndex, query.PageSize, total);
         }
 
+        public async Task<SignedApplicationFile> GetSignedApplicationAsync(Guid participantId, CancellationToken cancellationToken = default)
+        {
+            await EnsurePermissionAsync("READ_AUCTIONPARTICIPANT");
+            var participant = await participants.GetAsync(p => p.Id == participantId, cancellationToken)
+                              ?? throw new NotFoundException("Application not found");
+            if (string.IsNullOrWhiteSpace(participant.SignedApplication))
+                throw new NotFoundException("This application has no signature.");
+            // E-IMZO-SERVER returns the timestamped PKCS#7 as base64: the file is its bytes. Anything else is given as it was stored.
+            var buffer = new byte[participant.SignedApplication.Length];
+            var content = Convert.TryFromBase64String(participant.SignedApplication, buffer, out var written)
+                ? buffer[..written]
+                : System.Text.Encoding.UTF8.GetBytes(participant.SignedApplication);
+            return new SignedApplicationFile(content, $"ariza-{participant.ParticipantNumber?.ToString() ?? participant.Id.ToString("N")[..8]}.p7s");
+        }
+
         public Task<ResponseModel<ParticipantAdminViewModel>> ApproveAsync(Guid participantId, CancellationToken cancellationToken = default)
             => unitOfWork.ExecuteAsync(async () =>
             {

@@ -192,6 +192,16 @@ namespace Application.Services.EntityServices
                     award.UserPhone = person?.Phone;
                 }
             }
+
+            var byStatus = await _participantRepository.Query(p => p.AuctionId == id, cancellationToken)
+                .GroupBy(p => p.Status)
+                .Select(g => new { Status = g.Key, Count = g.Count() })
+                .ToListAsync(cancellationToken);
+            int Of(ParticipantStatus status) => byStatus.FirstOrDefault(x => x.Status == status)?.Count ?? 0;
+            view.ParticipantCounts = new ParticipantCountsViewModel(
+                byStatus.Sum(x => x.Count), Of(ParticipantStatus.PENDING), Of(ParticipantStatus.APPROVED),
+                Of(ParticipantStatus.REJECTED), Of(ParticipantStatus.WITHDRAWN),
+                await _participantRepository.Query(p => p.AuctionId == id && p.DepositStatus == DepositStatus.PAID, cancellationToken).CountAsync(cancellationToken));
             return ResponseModel<AuctionViewModel?>.Ok(view);
         }
 

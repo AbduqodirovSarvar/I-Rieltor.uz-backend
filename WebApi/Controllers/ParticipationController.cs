@@ -1,4 +1,7 @@
 using Application.Features.Participation;
+using Application.Interfaces.EntityServices;
+using Domain.Behaviours;
+using System.ComponentModel.DataAnnotations;
 using Application.Features.Payments;
 using Application.Messaging;
 using Domain.Enums.Actions;
@@ -19,7 +22,7 @@ namespace WebApi.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
-    public class ParticipationController(IMediator mediator) : BaseController(mediator)
+    public class ParticipationController(IMediator mediator, IParticipationService participation) : BaseController(mediator)
     {
         /// <summary>
         /// The text to sign for the auction, with this applicant's PINFL/INN in it. Sign it as is
@@ -62,6 +65,20 @@ namespace WebApi.Controllers
         [ProducesResponseType<ResponseModel<List<ParticipantAdminViewModel>>>(200)]
         public async Task<IActionResult> GetAll([FromQuery] GetParticipantListQuery query)
             => Ok(await _mediator.Send(query, HttpContext.RequestAborted));
+
+        /// <summary>
+        /// Staff: the application's E-IMZO signature as a <c>.p7s</c> file (PKCS#7 with the signed text and a time stamp), to be checked
+        /// outside the system. 404 when the application has no signature.
+        /// </summary>
+        [Authorize(Policy = nameof(AuctionParticipantActions.READ_AUCTIONPARTICIPANT))]
+        [HttpGet("signed-application")]
+        public async Task<IActionResult> GetSignedApplication([FromQuery, Required, NotEmptyGuid] Guid id)
+        {
+            var file = await participation.GetSignedApplicationAsync(id, HttpContext.RequestAborted);
+            Response.Headers.CacheControl = "private, no-store";
+            Response.Headers["X-Content-Type-Options"] = "nosniff";
+            return File(file.Content, "application/pkcs7-signature", file.FileName);
+        }
 
         /// <summary>Approves a pending application: gives the participant number (and a zero deposit counts as paid).</summary>
         [Authorize(Policy = nameof(AuctionParticipantActions.UPDATE_AUCTIONPARTICIPANT))]
