@@ -32,14 +32,14 @@ namespace WebApi.Extensions
             app.UseMiddleware<AuditLogMiddleware>();
             app.UseExceptionHandler();
 
-            // API documentation is exposed only on developer machines.
-            if (app.Environment.IsDevelopment())
+            // API documentation at /swagger. On by default everywhere; Swagger__Enabled=false switches it off.
+            if (app.Configuration.GetValue("Swagger:Enabled", true))
             {
                 app.UseSwagger();
                 app.UseSwaggerUI(c =>
                 {
                     c.SwaggerEndpoint("/swagger/v1/swagger.json", "I-Rieltor.uz API V1");
-                    c.RoutePrefix = string.Empty;
+                    c.RoutePrefix = "swagger";
                 });
             }
 

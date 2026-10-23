@@ -1,0 +1,14 @@
+# LOCAL ONLY. Packs an already published API (publish-local/) into the same runtime image as WebApi/Dockerfile.
+# Use it when "dotnet restore" inside Docker fails with NU1301 / PartialChain (a corporate proxy replaces the HTTPS
+# certificates and the container does not trust them): the publish then runs on the machine itself, which does.
+# See deploy/local/README.md. Production uses WebApi/Dockerfile.
+FROM mcr.microsoft.com/dotnet/aspnet:10.0@sha256:d5633778c754e89a386882eddf8dbee6942447a8a4b8267c19cf1e1158d0b0ac AS final
+# Same as WebApi/Dockerfile: uploaded files live outside the app folder, owned by the non-root app user.
+RUN mkdir -p /data/files && chown $APP_UID:$APP_UID /data/files
+ENV FileStorage__RootPath=/data/files
+VOLUME /data/files
+USER $APP_UID
+WORKDIR /app
+EXPOSE 8080
+COPY publish-local/ .
+ENTRYPOINT ["dotnet", "WebApi.dll"]

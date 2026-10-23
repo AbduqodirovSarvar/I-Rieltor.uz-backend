@@ -1,0 +1,9 @@
+# LOCAL ONLY: an override of docker-compose.yml that builds the API image from a locally published folder
+# (WebApi/Dockerfile.local) instead of restoring packages inside Docker. Use it through deploy/local/up.ps1, or:
+#   dotnet publish WebApi/WebApi.csproj -c Release -o publish-local -p:UseAppHost=false
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
+services:
+  api:
+    build:
+      context: .
+      dockerfile: WebApi/Dockerfile.local
