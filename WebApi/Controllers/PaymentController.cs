@@ -1,5 +1,6 @@
 using Application.Features.Payments;
 using Application.Messaging;
+using Domain.Enums;
 using Domain.Enums.Actions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -27,6 +28,12 @@ namespace WebApi.Controllers
         [ProducesResponseType<ResponseModel<CheckoutViewModel>>(200)]
         public async Task<IActionResult> Checkout([FromBody] CheckoutCommand command)
             => Ok(await _mediator.Send(command));
+
+        /// <summary>The payment methods that are switched on (PAYME, CLICK, BANK_TRANSFER, CARD_TRANSFER); offer only these.</summary>
+        [HttpGet("providers")]
+        [ProducesResponseType<ResponseModel<List<PaymentProvider>>>(200)]
+        public async Task<IActionResult> GetProviders()
+            => Ok(await _mediator.Send(new GetPaymentProvidersQuery(), HttpContext.RequestAborted));
 
         /// <summary>Your payments.</summary>
         [HttpGet("my")]

@@ -82,16 +82,22 @@ namespace Application.Services.Payments
                 return ResponseModel<CheckoutViewModel>.Ok(CheckoutOf(payment));
             }, cancellationToken);
 
+        private bool IsAvailable(PaymentProvider provider) => provider switch
+        {
+            PaymentProvider.PAYME => settings.Payme.Enabled,
+            PaymentProvider.CLICK => settings.Click.Enabled,
+            PaymentProvider.BANK_TRANSFER => settings.BankTransfer.Enabled,
+            PaymentProvider.CARD_TRANSFER => settings.CardTransfer.Enabled,
+            _ => false,
+        };
+
+        public List<PaymentProvider> GetAvailableProviders()
+            => new[] { PaymentProvider.PAYME, PaymentProvider.CLICK, PaymentProvider.BANK_TRANSFER, PaymentProvider.CARD_TRANSFER }
+                .Where(IsAvailable).ToList();
+
         private void EnsureProviderAvailable(PaymentProvider provider)
         {
-            var available = provider switch
-            {
-                PaymentProvider.PAYME => settings.Payme.Enabled,
-                PaymentProvider.CLICK => settings.Click.Enabled,
-                PaymentProvider.BANK_TRANSFER => settings.BankTransfer.Enabled,
-                PaymentProvider.CARD_TRANSFER => settings.CardTransfer.Enabled,
-                _ => false,
-            };
+            var available = IsAvailable(provider);
             if (!available)
                 throw new ConflictException($"Payment by {provider} is not available.");
         }

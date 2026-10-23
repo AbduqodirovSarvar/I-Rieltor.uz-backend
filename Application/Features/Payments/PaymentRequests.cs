@@ -27,6 +27,9 @@ namespace Application.Features.Payments
 
     public record GetMyPaymentsQuery : BaseGetListQuery, IQuery<ResponseModel<List<PaymentViewModel>>>;
 
+    /// <summary>The payment methods that are switched on, so the site offers only those.</summary>
+    public record GetPaymentProvidersQuery : IQuery<ResponseModel<List<PaymentProvider>>>;
+
     public record GetPaymentListQuery : BaseGetListQuery, IQuery<ResponseModel<List<PaymentViewModel>>>;
 
     public record RecordManualPaymentCommand : ICommand<ResponseModel<PaymentViewModel>>
@@ -85,6 +88,7 @@ namespace Application.Features.Payments
     public class PaymentRequestHandlers(IPaymentService service, IAuctionSettlement settlement, ICurrentUserService currentUser, IUnitOfWork unitOfWork)
         : ICommandHandler<CheckoutCommand, ResponseModel<CheckoutViewModel>>,
           IQueryHandler<GetMyPaymentsQuery, ResponseModel<List<PaymentViewModel>>>,
+          IQueryHandler<GetPaymentProvidersQuery, ResponseModel<List<PaymentProvider>>>,
           IQueryHandler<GetPaymentListQuery, ResponseModel<List<PaymentViewModel>>>,
           ICommandHandler<RecordManualPaymentCommand, ResponseModel<PaymentViewModel>>,
           ICommandHandler<ConfirmPaymentCommand, ResponseModel<PaymentViewModel>>,
@@ -98,6 +102,9 @@ namespace Application.Features.Payments
 
         public Task<ResponseModel<List<PaymentViewModel>>> Handle(GetMyPaymentsQuery request, CancellationToken cancellationToken)
             => service.GetMyAsync(request, cancellationToken);
+
+        public Task<ResponseModel<List<PaymentProvider>>> Handle(GetPaymentProvidersQuery request, CancellationToken cancellationToken)
+            => Task.FromResult(ResponseModel<List<PaymentProvider>>.Ok(service.GetAvailableProviders()));
 
         public Task<ResponseModel<List<PaymentViewModel>>> Handle(GetPaymentListQuery request, CancellationToken cancellationToken)
             => service.GetListAsync(request, cancellationToken);

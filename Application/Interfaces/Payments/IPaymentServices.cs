@@ -25,6 +25,9 @@ namespace Application.Interfaces.Payments
         /// </summary>
         Task<ResponseModel<CheckoutViewModel>> CheckoutAsync(Guid auctionId, PaymentPurpose purpose, PaymentProvider provider, CancellationToken cancellationToken = default);
 
+        /// <summary>The methods whose settings are filled in (a checkout with any other is a 409).</summary>
+        List<PaymentProvider> GetAvailableProviders();
+
         Task<ResponseModel<List<PaymentViewModel>>> GetMyAsync(BaseGetListQuery query, CancellationToken cancellationToken = default);
 
         /// <summary>Staff: all payments, e.g. <c>Filters[purpose.equals]=REFUND</c> and <c>Filters[status.equals]=PENDING</c> for the refunds to carry out.</summary>
