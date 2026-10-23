@@ -17,7 +17,7 @@ namespace Application.Features.AuditLogs
     /// </summary>
     public record GetAuditLogListQuery : BaseGetListQuery, IQuery<ResponseModel<List<AuditLogViewModel>>>;
 
-    public class GetAuditLogListQueryHandler(IAuditLogRepository auditLogs, IPermissionService permissionService, IMapper mapper)
+    public class GetAuditLogListQueryHandler(IAuditLogRepository auditLogs, IPermissionService permissionService, IUserDirectory users, IMapper mapper)
         : IQueryHandler<GetAuditLogListQuery, ResponseModel<List<AuditLogViewModel>>>
     {
         public async Task<ResponseModel<List<AuditLogViewModel>>> Handle(GetAuditLogListQuery request, CancellationToken cancellationToken)
@@ -28,7 +28,11 @@ namespace Application.Features.AuditLogs
             var (data, total) = await auditLogs.GetPaginatedAsync(
                 request.BuildPredicate<AuditLog>(), request.PageIndex, request.PageSize,
                 request.BuildOrderBy<AuditLog>() ?? (q => q.OrderByDescending(a => a.OccurredAt).ThenByDescending(a => a.Id)), cancellationToken);
-            return ResponseModel<List<AuditLogViewModel>>.Ok(mapper.Map<List<AuditLogViewModel>>(data), request.PageIndex, request.PageSize, total);
+            var views = mapper.Map<List<AuditLogViewModel>>(data);
+            var people = await users.GetAsync(views.Select(v => v.UserId), cancellationToken);
+            foreach (var view in views.Where(v => v.UserId.HasValue))
+                view.UserFullName = people.GetValueOrDefault(view.UserId!.Value)?.FullName;
+            return ResponseModel<List<AuditLogViewModel>>.Ok(views, request.PageIndex, request.PageSize, total);
         }
     }
 }

@@ -51,6 +51,8 @@ namespace Application.Models.ViewModels.Participation
     public record ParticipantAdminViewModel : BaseViewModel
     {
         public Guid AuctionId { get; set; }
+        public string? LotNumber { get; set; }
+        public string? AuctionTitle { get; set; }
         public Guid UserId { get; set; }
         public string UserFullName { get; set; } = string.Empty;
         /// <summary>PINFL or INN of the applicant.</summary>

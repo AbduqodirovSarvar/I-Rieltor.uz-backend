@@ -40,6 +40,11 @@ namespace Application.Models.ViewModels.Auctions
     {
         public int Rank { get; set; }
         public Guid ParticipantId { get; set; }
+        /// <summary>Who the offer is for (staff see the person; the number is the one in the public bid list).</summary>
+        public int? ParticipantNumber { get; set; }
+        public Guid? UserId { get; set; }
+        public string? UserFullName { get; set; }
+        public string? UserPhone { get; set; }
         public Guid BidId { get; set; }
         public decimal Price { get; set; }
         public AwardStatus Status { get; set; }

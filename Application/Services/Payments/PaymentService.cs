@@ -25,6 +25,7 @@ namespace Application.Services.Payments
         IPaymentProcessor processor,
         ICurrentUserService currentUser,
         IPermissionService permissionService,
+        IUserDirectory userDirectory,
         PaymentSettings settings,
         IMapper mapper,
         IUnitOfWork unitOfWork) : IPaymentService
@@ -155,15 +156,27 @@ namespace Application.Services.Payments
             var (data, total) = await payments.GetPaginatedAsync(predicate, query.PageIndex, query.PageSize,
                 query.BuildOrderBy<Payment>() ?? (q => q.OrderByDescending(p => p.CreatedAt).ThenByDescending(p => p.Id)), cancellationToken);
             var views = mapper.Map<List<PaymentViewModel>>(data);
-            await AttachReceiptsAsync(views, cancellationToken);
+            await EnrichAsync(views, cancellationToken);
             return ResponseModel<List<PaymentViewModel>>.Ok(views, query.PageIndex, query.PageSize, total);
         }
 
-        /// <summary>The receipts of the payments in one query.</summary>
-        private async Task AttachReceiptsAsync(List<PaymentViewModel> views, CancellationToken cancellationToken)
+        /// <summary>The receipts, the payer and the lot of the payments, each in one query.</summary>
+        private async Task EnrichAsync(List<PaymentViewModel> views, CancellationToken cancellationToken)
         {
             if (views.Count == 0)
                 return;
+            var people = await userDirectory.GetAsync(views.Select(v => (Guid?)v.UserId), cancellationToken);
+            var auctionIds = views.Select(v => v.AuctionId).Distinct().ToList();
+            var lots = await auctions.Query(a => auctionIds.Contains(a.Id), cancellationToken)
+                .Select(a => new { a.Id, a.LotNumber, a.Title }).ToListAsync(cancellationToken);
+            foreach (var view in views)
+            {
+                view.UserFullName = people.GetValueOrDefault(view.UserId)?.FullName;
+                view.UserPhone = people.GetValueOrDefault(view.UserId)?.Phone;
+                var lot = lots.FirstOrDefault(l => l.Id == view.AuctionId);
+                view.LotNumber = lot?.LotNumber;
+                view.AuctionTitle = lot?.Title;
+            }
             var ids = views.Select(v => (Guid?)v.Id).ToList();
             var (files, _) = await documents.GetPaginatedAsync(d => ids.Contains(d.PaymentId), 0, 1000,
                 q => q.OrderBy(d => d.CreatedAt).ThenBy(d => d.Id), cancellationToken);
@@ -175,7 +188,7 @@ namespace Application.Services.Payments
         private async Task<PaymentViewModel> ViewOfAsync(Payment payment, CancellationToken cancellationToken)
         {
             var view = mapper.Map<PaymentViewModel>(payment);
-            await AttachReceiptsAsync([view], cancellationToken);
+            await EnrichAsync([view], cancellationToken);
             return view;
         }
 

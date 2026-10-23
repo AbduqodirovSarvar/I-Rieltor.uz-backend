@@ -7,3 +7,7 @@ services:
     build:
       context: .
       dockerfile: WebApi/Dockerfile.local
+  admin:
+    build:
+      context: ../I-Rieltor.uz-admin
+      dockerfile: Dockerfile.local

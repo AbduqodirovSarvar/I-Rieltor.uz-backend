@@ -96,7 +96,8 @@ namespace IRieltor.Tests.Integration
             var admin = await api.AdminClientAsync();
             Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync($"api/document/download?id={id}")).StatusCode);
             var all = (await ApiFactory.JsonAsync(await admin.GetAsync($"api/document/list?Filters%5BownerId.equals%5D={await api.ScalarAsync<Guid>("select \"Id\" from \"Users\" where \"Login\" = 'doc_owner2'")}")))["data"]!.AsArray();
-            Assert.Single(all);
+            var only = Assert.Single(all)!;
+            Assert.False(string.IsNullOrWhiteSpace(only["ownerFullName"]?.GetValue<string>()));   // staff see whose it is
         }
 
         [Fact]

@@ -283,6 +283,13 @@ namespace IRieltor.Tests.Integration
             var pendingOnly = (await Ok(await admin.GetAsync($"api/participation/list?Filters%5BauctionId.equals%5D={id}&Filters%5Bstatus.equals%5D=PENDING")))["data"]!.AsArray();
             Assert.Single(pendingOnly);
             Assert.False(string.IsNullOrEmpty(all[0]!["userFullName"]!.GetValue<string>()));
+            Assert.False(string.IsNullOrEmpty(all[0]!["lotNumber"]!.GetValue<string>()));   // the lot, not only its id
+
+            // The text is searched in the applicant: name, PINFL/INN, phone, e-mail.
+            var name = all.First(x => x!["userId"]!.GetValue<string>() == first.UserId.ToString())!["userFullName"]!.GetValue<string>();
+            var byName = (await Ok(await admin.GetAsync($"api/participation/list?Filters%5BauctionId.equals%5D={id}&SearchText={Uri.EscapeDataString(name)}")))["data"]!.AsArray();
+            Assert.Contains(byName, x => x!["userId"]!.GetValue<string>() == first.UserId.ToString());
+            Assert.Empty((await Ok(await admin.GetAsync($"api/participation/list?Filters%5BauctionId.equals%5D={id}&SearchText=zzzz-nobody")))["data"]!.AsArray());
 
             Assert.Equal(HttpStatusCode.Forbidden, (await first.Client.GetAsync("api/participation/list")).StatusCode);
             Assert.Equal(HttpStatusCode.Forbidden, (await first.Client.PostAsJsonAsync("api/participation/approve", new { id = first.ParticipantId })).StatusCode);

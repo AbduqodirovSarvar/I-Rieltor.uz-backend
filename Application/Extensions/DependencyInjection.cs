@@ -57,6 +57,7 @@ namespace Application.Extensions
             services.TryAddSingleton<IAuctionEvents, NullAuctionEvents>();
             services.AddScoped<IDepositRefundService, DepositRefundService>();
             services.AddScoped<INotificationService, NotificationService>();
+            services.AddScoped<Application.Interfaces.Auths.IUserDirectory, Application.Services.Auths.UserDirectory>();
             services.AddScoped<INotificationDispatcher, NotificationDispatcher>();
             services.AddScoped<NotificationSender>();
             services.AddScoped<AuctionTransitions>();

@@ -23,9 +23,21 @@ if (Test-Path "publish-local") { Remove-Item "publish-local" -Recurse -Force }
 dotnet publish WebApi/WebApi.csproj -c Release -o publish-local -p:UseAppHost=false
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed." }
 
+# The admin panel is built here too (same reason); skipped when the admin folder is not next to the backend.
+$admin = Join-Path (Get-Location) "..\I-Rieltor.uz-admin"
+if (Test-Path $admin) {
+    Push-Location $admin
+    npx ng build --configuration docker
+    $adminExit = $LASTEXITCODE
+    Pop-Location
+    if ($adminExit -ne 0) { throw "admin build failed." }
+}
+
 docker compose @compose up -d --build
 if ($LASTEXITCODE -ne 0) { throw "docker compose up failed." }
 
 $port = if ($env_text -match "(?m)^\s*HTTP_PORT=(\d+)") { $Matches[1] } else { "80" }
 Write-Host "`nAPI through Nginx: http://localhost:$port/api/slide/public   health: http://localhost:$port/health/ready"
+$adminPort = if ($env_text -match "(?m)^\s*ADMIN_PORT=(\d+)") { $Matches[1] } else { "8081" }
+Write-Host "Admin panel: http://localhost:$adminPort"
 Write-Host "Logs: docker compose $($compose -join ' ') logs -f api"

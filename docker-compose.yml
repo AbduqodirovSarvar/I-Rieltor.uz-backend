@@ -135,6 +135,22 @@ services:
       backend:
         ipv4_address: 172.30.0.10
 
+  # The admin panel (../I-Rieltor.uz-admin): static files plus a proxy to the API, so it is one origin and needs no CORS.
+  # http://localhost:${ADMIN_PORT:-8081}. For HTTPS, put it behind the same kind of certificate setup as the API.
+  admin:
+    build:
+      context: ../I-Rieltor.uz-admin
+    image: irieltor-admin
+    restart: unless-stopped
+    logging: *default-logging
+    ports:
+      - "0.0.0.0:${ADMIN_PORT:-8081}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - backend
+
   certbot:
     image: certbot/certbot:v5.8.0@sha256:f70ad0adbb7e117f0fe42a63c553f28ea451edabc0148757b6efcd9735acaa20
     restart: unless-stopped

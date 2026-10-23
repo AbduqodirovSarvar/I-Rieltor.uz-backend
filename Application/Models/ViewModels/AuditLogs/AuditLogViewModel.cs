@@ -6,6 +6,7 @@ namespace Application.Models.ViewModels.AuditLogs
     {
         public DateTime OccurredAt { get; set; }
         public Guid? UserId { get; set; }
+        public string? UserFullName { get; set; }
         public string Action { get; set; } = string.Empty;
         public string Method { get; set; } = string.Empty;
         public string Path { get; set; } = string.Empty;

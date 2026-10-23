@@ -138,13 +138,29 @@ namespace Application.Services.EntityServices
         public async Task<ResponseModel<List<ParticipantAdminViewModel>>> GetListAsync(BaseGetListQuery query, CancellationToken cancellationToken = default)
         {
             await EnsurePermissionAsync("READ_AUCTIONPARTICIPANT");
-            var filtered = participants.Query(query.BuildPredicate<AuctionParticipant>(), cancellationToken);
+            // The text is searched in the applicant (name, PINFL/INN, phone, e-mail), not in the application's own fields.
+            var text = query.SearchText?.Trim().ToLowerInvariant();
+            var filtered = participants.Query((query with { SearchText = null }).BuildPredicate<AuctionParticipant>(), cancellationToken);
+            if (!string.IsNullOrEmpty(text))
+                filtered = filtered.Where(p => p.User!.FullName.ToLower().Contains(text)
+                                               || (p.User.INNPINFL != null && p.User.INNPINFL.Contains(text))
+                                               || (p.User.Phone != null && p.User.Phone.Contains(text))
+                                               || (p.User.Email != null && p.User.Email.ToLower().Contains(text)));
             var total = await filtered.CountAsync(cancellationToken);
             var ordered = query.BuildOrderBy<AuctionParticipant>() is { } orderBy
                 ? orderBy(filtered)
                 : filtered.OrderBy(p => p.CreatedAt).ThenBy(p => p.Id);
             var page = await ordered.Include(p => p.User).Skip(query.PageIndex * query.PageSize).Take(query.PageSize).ToListAsync(cancellationToken);
-            return ResponseModel<List<ParticipantAdminViewModel>>.Ok(page.Select(ToAdminView).ToList(), query.PageIndex, query.PageSize, total);
+            var views = page.Select(ToAdminView).ToList();
+            var auctionIds = views.Select(v => v.AuctionId).Distinct().ToList();
+            var lots = await auctions.Query(a => auctionIds.Contains(a.Id), cancellationToken).Select(a => new { a.Id, a.LotNumber, a.Title }).ToListAsync(cancellationToken);
+            foreach (var view in views)
+            {
+                var lot = lots.FirstOrDefault(l => l.Id == view.AuctionId);
+                view.LotNumber = lot?.LotNumber;
+                view.AuctionTitle = lot?.Title;
+            }
+            return ResponseModel<List<ParticipantAdminViewModel>>.Ok(views, query.PageIndex, query.PageSize, total);
         }
 
         public Task<ResponseModel<ParticipantAdminViewModel>> ApproveAsync(Guid participantId, CancellationToken cancellationToken = default)

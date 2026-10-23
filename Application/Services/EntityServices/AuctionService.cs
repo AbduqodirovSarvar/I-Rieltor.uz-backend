@@ -176,6 +176,22 @@ namespace Application.Services.EntityServices
                              .Include(r => r.Awards.OrderBy(a => a.Rank))
                              .FirstOrDefaultAsync(cancellationToken);
             view.Result = result == null ? null : _mapper.Map<AuctionResultViewModel>(result);
+            if (view.Result is { Awards.Count: > 0 })
+            {
+                // Staff see who each offer is for.
+                var participantIds = view.Result.Awards.Select(a => a.ParticipantId).ToList();
+                var people = await _participantRepository.Query(p => participantIds.Contains(p.Id), cancellationToken)
+                    .Select(p => new { p.Id, p.ParticipantNumber, p.UserId, p.User!.FullName, p.User.Phone })
+                    .ToListAsync(cancellationToken);
+                foreach (var award in view.Result.Awards)
+                {
+                    var person = people.FirstOrDefault(p => p.Id == award.ParticipantId);
+                    award.ParticipantNumber = person?.ParticipantNumber;
+                    award.UserId = person?.UserId;
+                    award.UserFullName = person?.FullName;
+                    award.UserPhone = person?.Phone;
+                }
+            }
             return ResponseModel<AuctionViewModel?>.Ok(view);
         }
 

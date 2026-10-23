@@ -20,6 +20,7 @@ namespace Application.Services.EntityServices
         IPaymentRepository payments,
         ICurrentUserService currentUser,
         IPermissionService permissionService,
+        IUserDirectory userDirectory,
         IMapper mapper,
         IUnitOfWork unitOfWork) : IPrivateDocumentService
     {
@@ -89,7 +90,11 @@ namespace Application.Services.EntityServices
             };
             var (data, total) = await documents.GetPaginatedAsync(predicate, query.PageIndex, query.PageSize,
                 query.BuildOrderBy<PrivateDocument>() ?? (q => q.OrderByDescending(d => d.CreatedAt).ThenByDescending(d => d.Id)), cancellationToken);
-            return ResponseModel<List<PrivateDocumentViewModel>>.Ok(mapper.Map<List<PrivateDocumentViewModel>>(data), query.PageIndex, query.PageSize, total);
+            var views = mapper.Map<List<PrivateDocumentViewModel>>(data);
+            var people = await userDirectory.GetAsync(views.Select(v => (Guid?)v.OwnerId), cancellationToken);
+            foreach (var view in views)
+                view.OwnerFullName = people.GetValueOrDefault(view.OwnerId)?.FullName;
+            return ResponseModel<List<PrivateDocumentViewModel>>.Ok(views, query.PageIndex, query.PageSize, total);
         }
 
         public async Task<PrivateDocumentDownload> DownloadAsync(Guid id, CancellationToken cancellationToken = default)

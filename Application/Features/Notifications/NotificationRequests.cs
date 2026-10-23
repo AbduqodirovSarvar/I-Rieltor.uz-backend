@@ -15,7 +15,7 @@ namespace Application.Features.Notifications
     /// <summary>The delivery log: what was sent to whom, and what failed.</summary>
     public record GetNotificationListQuery : BaseGetListQuery, IQuery<ResponseModel<List<NotificationViewModel>>>;
 
-    public class GetNotificationListQueryHandler(INotificationRepository notifications, IPermissionService permissionService, IMapper mapper)
+    public class GetNotificationListQueryHandler(INotificationRepository notifications, IPermissionService permissionService, IUserDirectory users, IMapper mapper)
         : IQueryHandler<GetNotificationListQuery, ResponseModel<List<NotificationViewModel>>>
     {
         public async Task<ResponseModel<List<NotificationViewModel>>> Handle(GetNotificationListQuery request, CancellationToken cancellationToken)
@@ -26,7 +26,11 @@ namespace Application.Features.Notifications
             var (data, total) = await notifications.GetPaginatedAsync(
                 request.BuildPredicate<Notification>(), request.PageIndex, request.PageSize,
                 request.BuildOrderBy<Notification>() ?? (q => q.OrderByDescending(n => n.CreatedAt).ThenByDescending(n => n.Id)), cancellationToken);
-            return ResponseModel<List<NotificationViewModel>>.Ok(mapper.Map<List<NotificationViewModel>>(data), request.PageIndex, request.PageSize, total);
+            var views = mapper.Map<List<NotificationViewModel>>(data);
+            var people = await users.GetAsync(views.Select(v => (Guid?)v.UserId), cancellationToken);
+            foreach (var view in views)
+                view.UserFullName = people.GetValueOrDefault(view.UserId)?.FullName;
+            return ResponseModel<List<NotificationViewModel>>.Ok(views, request.PageIndex, request.PageSize, total);
         }
     }
 }

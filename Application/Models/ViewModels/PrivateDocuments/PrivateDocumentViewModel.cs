@@ -7,6 +7,7 @@ namespace Application.Models.ViewModels.PrivateDocuments
     public record PrivateDocumentViewModel : BaseViewModel
     {
         public Guid OwnerId { get; set; }
+        public string? OwnerFullName { get; set; }
         public DocumentPurpose Purpose { get; set; }
         public Guid? AuctionId { get; set; }
         public Guid? PaymentId { get; set; }

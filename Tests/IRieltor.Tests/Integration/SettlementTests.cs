@@ -85,6 +85,37 @@ namespace IRieltor.Tests.Integration
         }
 
         [Fact]
+        public async Task Staff_lists_show_people_and_lots_not_only_ids()
+        {
+            var admin = await api.AdminClientAsync();
+            var sale = await FinishedSaleAsync(admin);
+
+            // The offers of the sale: who each one is for.
+            var result = (await Ok(await admin.GetAsync($"api/auction?Id={sale.AuctionId}")))["data"]!["result"]!;
+            var awards = result["awards"]!.AsArray();
+            Assert.NotEmpty(awards);   // the buyer's offer; the runner-up's comes when the buyer defaults
+            Assert.All(awards, a =>
+            {
+                Assert.False(string.IsNullOrWhiteSpace(a!["userFullName"]?.GetValue<string>()));
+                Assert.NotNull(a["participantNumber"]);
+                Assert.NotNull(a["userId"]);
+            });
+            Assert.Equal(sale.A.UserId.ToString(), awards[0]!["userId"]!.GetValue<string>());
+
+            // Payments: the payer and the lot.
+            var lot = (await Ok(await admin.GetAsync($"api/auction?Id={sale.AuctionId}")))["data"]!["lotNumber"]!.GetValue<string>();
+            var refunds = (await Ok(await admin.GetAsync($"api/payment/list?Filters%5BauctionId.equals%5D={sale.AuctionId}&Filters%5Bpurpose.equals%5D=REFUND")))["data"]!.AsArray();
+            var refund = Assert.Single(refunds)!;
+            Assert.Equal(lot, refund["lotNumber"]!.GetValue<string>());
+            Assert.False(string.IsNullOrWhiteSpace(refund["userFullName"]?.GetValue<string>()));
+
+            // Notifications: the recipient.
+            var notices = (await Ok(await admin.GetAsync($"api/notification/list?Filters%5BuserId.equals%5D={sale.A.UserId}&PageSize=50")))["data"]!.AsArray();
+            Assert.NotEmpty(notices);
+            Assert.All(notices, n => Assert.False(string.IsNullOrWhiteSpace(n!["userFullName"]?.GetValue<string>())));
+        }
+
+        [Fact]
         public async Task The_buyer_pays_the_price_less_the_deposit_and_the_property_is_sold_and_the_runner_up_is_released()
         {
             var admin = await api.AdminClientAsync();

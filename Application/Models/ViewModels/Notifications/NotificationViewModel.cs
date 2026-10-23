@@ -6,6 +6,7 @@ namespace Application.Models.ViewModels.Notifications
     public record NotificationViewModel : BaseViewModel
     {
         public Guid UserId { get; set; }
+        public string? UserFullName { get; set; }
         public NotificationChannel Channel { get; set; }
         public NotificationType Type { get; set; }
         public NotificationStatus Status { get; set; }

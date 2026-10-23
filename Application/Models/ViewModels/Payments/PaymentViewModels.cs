@@ -6,7 +6,12 @@ namespace Application.Models.ViewModels.Payments
     public record PaymentViewModel : BaseViewModel
     {
         public Guid UserId { get; set; }
+        /// <summary>The payer, for staff lists.</summary>
+        public string? UserFullName { get; set; }
+        public string? UserPhone { get; set; }
         public Guid AuctionId { get; set; }
+        public string? LotNumber { get; set; }
+        public string? AuctionTitle { get; set; }
         public Guid? ParticipantId { get; set; }
         public PaymentPurpose Purpose { get; set; }
         public decimal Amount { get; set; }
