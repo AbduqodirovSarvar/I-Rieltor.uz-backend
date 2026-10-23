@@ -390,6 +390,41 @@ namespace Application.Services.Auths
             }, cancellationToken);
 
         /// <summary>
+        /// Contact details of the signed-in user. The name of an E-IMZO-verified account is the key's and stays; a phone is
+        /// unique among accounts, as at sign-up.
+        /// </summary>
+        public Task<UserViewModel> UpdateMyProfileAsync(Application.Features.Auths.Commands.UpdateProfile.UpdateMyProfileCommand profile, CancellationToken cancellationToken)
+            => _unitOfWork.ExecuteAsync(async () =>
+            {
+                var user = await GetSignedInUserAsync(cancellationToken);
+
+                if (profile.FullName != null)
+                {
+                    var name = string.Join(' ', profile.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+                    if (name.Length == 0)
+                        throw new BadRequestException("The name cannot be empty.");
+                    if (user.Type != ClientType.NONE && !string.Equals(name, user.FullName, StringComparison.Ordinal))
+                        throw new BadRequestException("The name of an account verified with E-IMZO comes from the key and cannot be changed.");
+                    user.FullName = name;
+                }
+
+                if (profile.Phone != null)
+                {
+                    var phone = profile.Phone.Trim();
+                    if (phone.Length > 0 && await _userRepository.AnyAsync(u => u.Id != user.Id && u.Phone == phone, cancellationToken))
+                        throw new ConflictException("This phone number is used by another account.");
+                    user.Phone = phone.Length == 0 ? null : phone;
+                }
+                if (profile.SecondaryPhone != null)
+                    user.SecondaryPhone = profile.SecondaryPhone.Trim().Length == 0 ? null : profile.SecondaryPhone.Trim();
+                if (profile.Address != null)
+                    user.Address = profile.Address.Trim().Length == 0 ? null : profile.Address.Trim();
+
+                await _userRepository.UpdateAsync(user, cancellationToken);
+                return _mapper.Map<UserViewModel>(user);
+            }, cancellationToken);
+
+        /// <summary>
         /// Needs the current password, so a stolen access token alone cannot take the account over. An account without
         /// a password (E-IMZO only) sets one with reset-password-via-eimzo instead, which proves the person by signature.
         /// All sessions end, the caller receives a new token pair.

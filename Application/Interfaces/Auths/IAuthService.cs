@@ -28,6 +28,7 @@ namespace Application.Interfaces.Auths
         Task<bool> LogOutAsync(string token, CancellationToken cancellationToken);
         Task<bool> ChangeMyEmailAsync(string email, CancellationToken cancellationToken);
         Task<TokenViewModel> ChangeMyPasswordAsync(string currentPassword, string newPassword, CancellationToken cancellationToken);
+        Task<UserViewModel> UpdateMyProfileAsync(Application.Features.Auths.Commands.UpdateProfile.UpdateMyProfileCommand profile, CancellationToken cancellationToken);
         Task<bool> ResendEmailConfirmationAsync(CancellationToken cancellationToken);
         Task<bool> ConfirmEmailAsync(string token, CancellationToken cancellationToken);
 

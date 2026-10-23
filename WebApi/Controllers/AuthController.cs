@@ -9,6 +9,7 @@ using Application.Features.Auths.Commands.Register;
 using Application.Features.Auths.Commands.RegisterViaEimzo;
 using Application.Features.Auths.Commands.EmailConfirmation;
 using Application.Features.Auths.Commands.ResetViaEimzo;
+using Application.Features.Auths.Commands.UpdateProfile;
 using Application.Features.Auths.Queries.EimzoChallenge;
 using Application.Messaging;
 using Microsoft.AspNetCore.Authorization;
@@ -219,6 +220,18 @@ namespace WebApi.Controllers
         [Authorize]
         [ProducesResponseType<ResponseModel<bool>>(200)]
         public async Task<IActionResult> ChangeMyEmail([FromBody] ChangeMyEmailCommand command)
+        {
+            var result = await _mediator.Send(command);
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Profile settings: the signed-in user edits their own name (not for E-IMZO-verified accounts), phones and address.
+        /// </summary>
+        [HttpPut("me/profile")]
+        [Authorize]
+        [ProducesResponseType<ResponseModel<UserViewModel>>(200)]
+        public async Task<IActionResult> UpdateMyProfile([FromBody] UpdateMyProfileCommand command)
         {
             var result = await _mediator.Send(command);
             return Ok(result);
