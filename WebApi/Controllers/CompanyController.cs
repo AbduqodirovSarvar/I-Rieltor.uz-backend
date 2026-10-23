@@ -10,6 +10,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using WebApi.Controllers.Abstractions;
+using Application.Models.Results;
+using Application.Models.ViewModels.Public;
+using Application.Models.ViewModels.Companies;
 
 namespace WebApi.Controllers
 {
@@ -24,6 +27,7 @@ namespace WebApi.Controllers
     {
         [Authorize(Policy = nameof(CompanyActions.CREATE_COMPANY))]
         [HttpPost]
+        [ProducesResponseType<ResponseModel<CompanyViewModel>>(200)]
         public override async Task<IActionResult> Post([FromForm] CreateCompanyCommand command)
         {
             return await base.Post(command);
@@ -31,6 +35,7 @@ namespace WebApi.Controllers
 
         [Authorize(Policy = nameof(CompanyActions.UPDATE_COMPANY))]
         [HttpPut]
+        [ProducesResponseType<ResponseModel<CompanyViewModel>>(200)]
         public override async Task<IActionResult> Put([FromForm] UpdateCompanyCommand command)
         {
             return await base.Put(command);
@@ -38,6 +43,7 @@ namespace WebApi.Controllers
 
         [Authorize(Policy = nameof(CompanyActions.DELETE_COMPANY))]
         [HttpDelete]
+        [ProducesResponseType<ResponseModel<bool>>(200)]
         public override async Task<IActionResult> Delete(DeleteCompanyCommand command)
         {
             return await base.Delete(command);
@@ -45,6 +51,7 @@ namespace WebApi.Controllers
 
         [Authorize(Policy = nameof(CompanyActions.READ_COMPANY))]
         [HttpGet]
+        [ProducesResponseType<ResponseModel<CompanyViewModel>>(200)]
         public override async Task<IActionResult> Get([FromQuery] GetOneCompanyQuery request)
         {
             return await base.Get(request);
@@ -52,6 +59,7 @@ namespace WebApi.Controllers
 
         [Authorize(Policy = nameof(CompanyActions.READ_COMPANY))]
         [HttpGet("list")]
+        [ProducesResponseType<ResponseModel<List<CompanyViewModel>>>(200)]
         public override async Task<IActionResult> GetAll([FromQuery] GetCompanyListQuery request)
         {
             return await base.GetAll(request);
@@ -62,6 +70,7 @@ namespace WebApi.Controllers
         /// </summary>
         [AllowAnonymous]
         [HttpGet("public")]
+        [ProducesResponseType<ResponseModel<PublicCompanyViewModel>>(200)]
         public async Task<IActionResult> GetPublic()
         {
             var result = await _mediator.Send(new GetPublicCompanyQuery(), HttpContext.RequestAborted);

@@ -6,6 +6,8 @@ using Application.Messaging;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebApi.Controllers.Abstractions;
+using Application.Models.Results;
+using Application.Models.ViewModels.UploadedFiles;
 
 namespace WebApi.Controllers
 {
@@ -36,6 +38,7 @@ namespace WebApi.Controllers
 
         [Authorize(Policy = nameof(UploadedFileActions.READ_UPLOADEDFILE))]
         [HttpGet]
+        [ProducesResponseType<ResponseModel<UploadedFileViewModel>>(200)]
         public override async Task<IActionResult> Get([FromQuery] GetOneUploadedFileQuery request)
         {
             return await base.Get(request);

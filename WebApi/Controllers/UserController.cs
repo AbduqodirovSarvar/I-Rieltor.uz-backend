@@ -9,6 +9,8 @@ using Application.Messaging;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebApi.Controllers.Abstractions;
+using Application.Models.Results;
+using Application.Models.ViewModels.Users;
 
 namespace WebApi.Controllers
 {
@@ -23,6 +25,7 @@ namespace WebApi.Controllers
     {
         [Authorize(Policy = nameof(UserActions.CREATE_USER))]
         [HttpPost]
+        [ProducesResponseType<ResponseModel<UserViewModel>>(200)]
         public override async Task<IActionResult> Post([FromForm] CreateUserCommand command)
         {
             return await base.Post(command);
@@ -30,6 +33,7 @@ namespace WebApi.Controllers
 
         [Authorize(Policy = nameof(UserActions.UPDATE_USER))]
         [HttpPut]
+        [ProducesResponseType<ResponseModel<UserViewModel>>(200)]
         public override async Task<IActionResult> Put([FromForm] UpdateUserCommand command)
         {
             return await base.Put(command);
@@ -37,6 +41,7 @@ namespace WebApi.Controllers
 
         [Authorize(Policy = nameof(UserActions.DELETE_USER))]
         [HttpDelete]
+        [ProducesResponseType<ResponseModel<bool>>(200)]
         public override async Task<IActionResult> Delete(DeleteUserCommand command)
         {
             return await base.Delete(command);
@@ -44,6 +49,7 @@ namespace WebApi.Controllers
 
         [Authorize(Policy = nameof(UserActions.READ_USER))]
         [HttpGet]
+        [ProducesResponseType<ResponseModel<UserViewModel>>(200)]
         public override async Task<IActionResult> Get([FromQuery] GetOneUserQuery request)
         {
             return await base.Get(request);
@@ -54,6 +60,7 @@ namespace WebApi.Controllers
         /// </summary>
         [Authorize(Policy = nameof(UserRoleActions.ASSIGN_USERROLE))]
         [HttpPut("role")]
+        [ProducesResponseType<ResponseModel<UserViewModel>>(200)]
         public async Task<IActionResult> AssignRole([FromBody] AssignUserRoleCommand command)
         {
             var result = await _mediator.Send(command);
@@ -62,6 +69,7 @@ namespace WebApi.Controllers
 
         [Authorize(Policy = nameof(UserActions.READ_USER))]
         [HttpGet("list")]
+        [ProducesResponseType<ResponseModel<List<UserViewModel>>>(200)]
         public override async Task<IActionResult> GetAll([FromQuery] GetUserListQuery request)
         {
             return await base.GetAll(request);

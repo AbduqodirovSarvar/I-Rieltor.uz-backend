@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using WebApi.Controllers.Abstractions;
 using WebApi.Extensions;
+using Application.Models.Results;
+using Application.Models.ViewModels.Bids;
 
 namespace WebApi.Controllers
 {
@@ -20,12 +22,14 @@ namespace WebApi.Controllers
         [Authorize]
         [HttpPost]
         [EnableRateLimiting(WebApiDependencyInjection.BidRateLimitPolicy)]
+        [ProducesResponseType<ResponseModel<PlacedBidViewModel>>(200)]
         public async Task<IActionResult> Place([FromBody] PlaceBidCommand command)
             => Ok(await _mediator.Send(command));
 
         /// <summary>Public history of the auction, highest (latest) first. Bidders are participant numbers.</summary>
         [AllowAnonymous]
         [HttpGet("list")]
+        [ProducesResponseType<ResponseModel<List<PublicBidViewModel>>>(200)]
         public async Task<IActionResult> GetList([FromQuery] GetBidListQuery query)
             => Ok(await _mediator.Send(query, HttpContext.RequestAborted));
     }

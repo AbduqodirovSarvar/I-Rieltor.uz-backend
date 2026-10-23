@@ -4,6 +4,8 @@ using Domain.Enums.Actions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebApi.Controllers.Abstractions;
+using Application.Interfaces.Dashboard;
+using Application.Models.Results;
 
 namespace WebApi.Controllers
 {
@@ -18,6 +20,7 @@ namespace WebApi.Controllers
         /// </summary>
         [Authorize(Policy = nameof(DashboardActions.READ_DASHBOARD))]
         [HttpGet("summary")]
+        [ProducesResponseType<ResponseModel<DashboardSummary>>(200)]
         public async Task<IActionResult> GetSummary()
             => Ok(await _mediator.Send(new GetDashboardSummaryQuery(), HttpContext.RequestAborted));
     }

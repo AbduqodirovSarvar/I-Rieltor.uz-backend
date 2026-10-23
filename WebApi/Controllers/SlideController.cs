@@ -10,6 +10,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using WebApi.Controllers.Abstractions;
+using Application.Models.Results;
+using Application.Models.ViewModels.Public;
+using Application.Models.ViewModels.Slides;
 
 namespace WebApi.Controllers
 {
@@ -24,6 +27,7 @@ namespace WebApi.Controllers
     {
         [Authorize(Policy = nameof(SlideActions.CREATE_SLIDE))]
         [HttpPost]
+        [ProducesResponseType<ResponseModel<SlideViewModel>>(200)]
         public override async Task<IActionResult> Post([FromForm] CreateSlideCommand command)
         {
             return await base.Post(command);
@@ -31,6 +35,7 @@ namespace WebApi.Controllers
 
         [Authorize(Policy = nameof(SlideActions.UPDATE_SLIDE))]
         [HttpPut]
+        [ProducesResponseType<ResponseModel<SlideViewModel>>(200)]
         public override async Task<IActionResult> Put([FromForm] UpdateSlideCommand command)
         {
             return await base.Put(command);
@@ -38,6 +43,7 @@ namespace WebApi.Controllers
 
         [Authorize(Policy = nameof(SlideActions.DELETE_SLIDE))]
         [HttpDelete]
+        [ProducesResponseType<ResponseModel<bool>>(200)]
         public override async Task<IActionResult> Delete(DeleteSlideCommand command)
         {
             return await base.Delete(command);
@@ -45,6 +51,7 @@ namespace WebApi.Controllers
 
         [Authorize(Policy = nameof(SlideActions.READ_SLIDE))]
         [HttpGet]
+        [ProducesResponseType<ResponseModel<SlideViewModel>>(200)]
         public override async Task<IActionResult> Get([FromQuery] GetOneSlideQuery request)
         {
             return await base.Get(request);
@@ -52,6 +59,7 @@ namespace WebApi.Controllers
 
         [Authorize(Policy = nameof(SlideActions.READ_SLIDE))]
         [HttpGet("list")]
+        [ProducesResponseType<ResponseModel<List<SlideViewModel>>>(200)]
         public override async Task<IActionResult> GetAll([FromQuery] GetSlideListQuery request)
         {
             return await base.GetAll(request);
@@ -62,6 +70,7 @@ namespace WebApi.Controllers
         /// </summary>
         [AllowAnonymous]
         [HttpGet("public")]
+        [ProducesResponseType<ResponseModel<List<PublicSlideViewModel>>>(200)]
         public async Task<IActionResult> GetPublic()
         {
             var result = await _mediator.Send(new GetPublicSlideListQuery(), HttpContext.RequestAborted);

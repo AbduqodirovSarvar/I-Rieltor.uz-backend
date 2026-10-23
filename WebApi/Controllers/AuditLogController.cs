@@ -4,6 +4,8 @@ using Domain.Enums.Actions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebApi.Controllers.Abstractions;
+using Application.Models.Results;
+using Application.Models.ViewModels.AuditLogs;
 
 namespace WebApi.Controllers
 {
@@ -17,6 +19,7 @@ namespace WebApi.Controllers
         /// </summary>
         [Authorize(Policy = nameof(AuditLogActions.READ_AUDITLOG))]
         [HttpGet("list")]
+        [ProducesResponseType<ResponseModel<List<AuditLogViewModel>>>(200)]
         public async Task<IActionResult> GetAll([FromQuery] GetAuditLogListQuery request)
             => Ok(await _mediator.Send(request, HttpContext.RequestAborted));
     }

@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.RateLimiting;
 using System.ComponentModel.DataAnnotations;
 using WebApi.Controllers.Abstractions;
 using WebApi.Extensions;
+using Application.Models.Results;
+using Application.Models.ViewModels.PrivateDocuments;
 
 namespace WebApi.Controllers
 {
@@ -24,11 +26,13 @@ namespace WebApi.Controllers
         /// <summary>Uploads a document (multipart form): pdf, png, jpg or docx, up to 10 MB.</summary>
         [HttpPost]
         [EnableRateLimiting(WebApiDependencyInjection.SessionRateLimitPolicy)]
+        [ProducesResponseType<ResponseModel<PrivateDocumentViewModel>>(200)]
         public async Task<IActionResult> Upload([FromForm] UploadPrivateDocumentCommand command)
             => Ok(await _mediator.Send(command));
 
         /// <summary>Your own documents.</summary>
         [HttpGet("my/list")]
+        [ProducesResponseType<ResponseModel<List<PrivateDocumentViewModel>>>(200)]
         public async Task<IActionResult> GetMine([FromQuery] GetMyPrivateDocumentsQuery query)
             => Ok(await _mediator.Send(query, HttpContext.RequestAborted));
 
@@ -37,6 +41,7 @@ namespace WebApi.Controllers
         /// </summary>
         [Authorize(Policy = nameof(PrivateDocumentActions.READ_PRIVATEDOCUMENT))]
         [HttpGet("list")]
+        [ProducesResponseType<ResponseModel<List<PrivateDocumentViewModel>>>(200)]
         public async Task<IActionResult> GetAll([FromQuery] GetPrivateDocumentListQuery query)
             => Ok(await _mediator.Send(query, HttpContext.RequestAborted));
 
@@ -57,6 +62,7 @@ namespace WebApi.Controllers
 
         /// <summary>Deletes your own document (staff with DELETE_PRIVATEDOCUMENT: anyone's).</summary>
         [HttpDelete]
+        [ProducesResponseType<ResponseModel<bool>>(200)]
         public async Task<IActionResult> Delete(DeletePrivateDocumentCommand command)
             => Ok(await _mediator.Send(command));
     }

@@ -17,6 +17,9 @@ using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.Tasks;
 using WebApi.Controllers.Abstractions;
 using WebApi.Extensions;
+using Application.Models.Results;
+using Application.Models.ViewModels.Auths;
+using Application.Models.ViewModels.Users;
 
 namespace WebApi.Controllers
 {
@@ -26,6 +29,7 @@ namespace WebApi.Controllers
     public class AuthController(IMediator mediator) : BaseController(mediator)
     {
         [HttpPost("sign-in")]
+        [ProducesResponseType<ResponseModel<TokenViewModel>>(200)]
         public async Task<IActionResult> SignIn([FromBody] SignInCommand command)
         {
             if (command == null)
@@ -40,6 +44,7 @@ namespace WebApi.Controllers
         /// </summary>
         [HttpGet("eimzo/challenge")]
         [EnableRateLimiting(WebApiDependencyInjection.SessionRateLimitPolicy)]
+        [ProducesResponseType<ResponseModel<EimzoChallengeResult>>(200)]
         public async Task<IActionResult> GetEimzoChallenge()
         {
             // A challenge is single-use; proxies and browsers must not cache it.
@@ -50,6 +55,7 @@ namespace WebApi.Controllers
         }
 
         [HttpPost("sign-in-via-eimzo")]
+        [ProducesResponseType<ResponseModel<TokenViewModel>>(200)]
         public async Task<IActionResult> SignInViaEimzo([FromBody] SignInViaEimzoCommand command)
         {
             if (command == null)
@@ -60,6 +66,7 @@ namespace WebApi.Controllers
         }
 
         [HttpPost("sign-up")]
+        [ProducesResponseType<ResponseModel<bool>>(200)]
         public async Task<IActionResult> SignUp([FromBody] SignUpCommand command)
         {
             if (command == null)
@@ -70,6 +77,7 @@ namespace WebApi.Controllers
         }
 
         [HttpPost("sign-up-via-eimzo")]
+        [ProducesResponseType<ResponseModel<bool>>(200)]
         public async Task<IActionResult> SignUpViaEimzo([FromBody] SignUpViaEimzoCommand command)
         {
             if (command == null)
@@ -80,6 +88,7 @@ namespace WebApi.Controllers
         }
 
         [HttpPost("reset-password-via-eimzo")]
+        [ProducesResponseType<ResponseModel<bool>>(200)]
         public async Task<IActionResult> ResetPasswordViaEimzo([FromBody] ResetPasswordViaEimzoCommand command)
         {
             if (command == null)
@@ -99,6 +108,7 @@ namespace WebApi.Controllers
         /// </summary>
         [HttpPost("eimzo/mobile/auth/start")]
         [EnableRateLimiting(WebApiDependencyInjection.SessionRateLimitPolicy)]
+        [ProducesResponseType<ResponseModel<EimzoMobileSession>>(200)]
         public async Task<IActionResult> StartEimzoMobileAuth()
         {
             Response.Headers.CacheControl = "no-store";
@@ -111,6 +121,7 @@ namespace WebApi.Controllers
         [HttpPost("eimzo/mobile/sign/start")]
         [Authorize]
         [EnableRateLimiting(WebApiDependencyInjection.SessionRateLimitPolicy)]
+        [ProducesResponseType<ResponseModel<EimzoMobileSession>>(200)]
         public async Task<IActionResult> StartEimzoMobileSign()
         {
             Response.Headers.CacheControl = "no-store";
@@ -122,6 +133,7 @@ namespace WebApi.Controllers
         /// </summary>
         [HttpGet("eimzo/mobile/status")]
         [DisableRateLimiting]
+        [ProducesResponseType<ResponseModel<EimzoMobileStatusResult>>(200)]
         public async Task<IActionResult> GetEimzoMobileStatus([FromQuery] GetEimzoMobileStatusQuery query)
         {
             Response.Headers.CacheControl = "no-store";
@@ -129,14 +141,17 @@ namespace WebApi.Controllers
         }
 
         [HttpPost("sign-in-via-eimzo-mobile")]
+        [ProducesResponseType<ResponseModel<TokenViewModel>>(200)]
         public async Task<IActionResult> SignInViaEimzoMobile([FromBody] SignInViaEimzoMobileCommand command)
             => Ok(await _mediator.Send(command));
 
         [HttpPost("sign-up-via-eimzo-mobile")]
+        [ProducesResponseType<ResponseModel<bool>>(200)]
         public async Task<IActionResult> SignUpViaEimzoMobile([FromBody] SignUpViaEimzoMobileCommand command)
             => Ok(await _mediator.Send(command));
 
         [HttpPost("reset-password-via-eimzo-mobile")]
+        [ProducesResponseType<ResponseModel<bool>>(200)]
         public async Task<IActionResult> ResetPasswordViaEimzoMobile([FromBody] ResetPasswordViaEimzoMobileCommand command)
             => Ok(await _mediator.Send(command));
 
@@ -147,6 +162,7 @@ namespace WebApi.Controllers
         /// </summary>
         [HttpPost("me/eimzo")]
         [Authorize]
+        [ProducesResponseType<ResponseModel<UserViewModel>>(200)]
         public async Task<IActionResult> LinkEimzo([FromBody] LinkEimzoCommand command)
             => Ok(await _mediator.Send(command));
 
@@ -155,6 +171,7 @@ namespace WebApi.Controllers
         /// </summary>
         [HttpPost("me/eimzo-mobile")]
         [Authorize]
+        [ProducesResponseType<ResponseModel<UserViewModel>>(200)]
         public async Task<IActionResult> LinkEimzoMobile([FromBody] LinkEimzoMobileCommand command)
             => Ok(await _mediator.Send(command));
 
@@ -163,6 +180,7 @@ namespace WebApi.Controllers
         /// </summary>
         [HttpPost("refresh-token")]
         [EnableRateLimiting(WebApiDependencyInjection.SessionRateLimitPolicy)]
+        [ProducesResponseType<ResponseModel<TokenViewModel>>(200)]
         public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenCommand command)
         {
             var result = await _mediator.Send(command);
@@ -174,6 +192,7 @@ namespace WebApi.Controllers
         /// </summary>
         [HttpPost("logout")]
         [EnableRateLimiting(WebApiDependencyInjection.SessionRateLimitPolicy)]
+        [ProducesResponseType<ResponseModel<bool>>(200)]
         public async Task<IActionResult> Logout([FromBody] LogoutCommand command)
         {
             var result = await _mediator.Send(command);
@@ -186,6 +205,7 @@ namespace WebApi.Controllers
         [HttpGet("me")]
         [Authorize]
         [DisableRateLimiting]
+        [ProducesResponseType<ResponseModel<UserViewModel>>(200)]
         public async Task<IActionResult> Me()
         {
             var result = await _mediator.Send(new GetCurrentUserQuery(), HttpContext.RequestAborted);
@@ -197,6 +217,7 @@ namespace WebApi.Controllers
         /// </summary>
         [HttpPut("me/email")]
         [Authorize]
+        [ProducesResponseType<ResponseModel<bool>>(200)]
         public async Task<IActionResult> ChangeMyEmail([FromBody] ChangeMyEmailCommand command)
         {
             var result = await _mediator.Send(command);
@@ -208,6 +229,7 @@ namespace WebApi.Controllers
         /// </summary>
         [HttpPut("me/password")]
         [Authorize]
+        [ProducesResponseType<ResponseModel<TokenViewModel>>(200)]
         public async Task<IActionResult> ChangeMyPassword([FromBody] ChangeMyPasswordCommand command)
         {
             var result = await _mediator.Send(command);
@@ -219,6 +241,7 @@ namespace WebApi.Controllers
         /// </summary>
         [HttpPost("me/email/resend-confirmation")]
         [Authorize]
+        [ProducesResponseType<ResponseModel<bool>>(200)]
         public async Task<IActionResult> ResendEmailConfirmation()
         {
             var result = await _mediator.Send(new ResendEmailConfirmationCommand());
@@ -229,6 +252,7 @@ namespace WebApi.Controllers
         /// Called by the frontend page the emailed link opens, with the token from that link.
         /// </summary>
         [HttpPost("confirm-email")]
+        [ProducesResponseType<ResponseModel<bool>>(200)]
         public async Task<IActionResult> ConfirmEmail([FromBody] ConfirmEmailCommand command)
         {
             var result = await _mediator.Send(command);

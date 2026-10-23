@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using WebApi.Controllers.Abstractions;
 using WebApi.Extensions;
+using Application.Models.Results;
+using Application.Models.ViewModels.Participation;
 
 namespace WebApi.Controllers
 {
@@ -24,46 +26,54 @@ namespace WebApi.Controllers
         /// (e-imzo-client.js <c>create_pkcs7</c> of <c>text</c>) and send the result to <c>apply</c>.
         /// </summary>
         [HttpGet("application-text")]
+        [ProducesResponseType<ResponseModel<ApplicationTextViewModel>>(200)]
         public async Task<IActionResult> GetApplicationText([FromQuery] GetApplicationTextQuery query)
             => Ok(await _mediator.Send(query, HttpContext.RequestAborted));
 
         /// <summary>Applies with the signed text (409 after the deadline or when already applied; 403 for a key that is not yours).</summary>
         [HttpPost("apply")]
         [EnableRateLimiting(WebApiDependencyInjection.SessionRateLimitPolicy)]
+        [ProducesResponseType<ResponseModel<ParticipantViewModel>>(200)]
         public async Task<IActionResult> Apply([FromBody] ApplyCommand command)
             => Ok(await _mediator.Send(command));
 
         /// <summary>Same, with the text signed on the phone (E-IMZO Mobile / ID-card).</summary>
         [HttpPost("apply-mobile")]
         [EnableRateLimiting(WebApiDependencyInjection.SessionRateLimitPolicy)]
+        [ProducesResponseType<ResponseModel<ParticipantViewModel>>(200)]
         public async Task<IActionResult> ApplyMobile([FromBody] ApplyMobileCommand command)
             => Ok(await _mediator.Send(command));
 
         /// <summary>Takes the application back before the sale starts; a paid deposit is queued for refund.</summary>
         [HttpPost("withdraw")]
+        [ProducesResponseType<ResponseModel<ParticipantViewModel>>(200)]
         public async Task<IActionResult> Withdraw([FromBody] WithdrawApplicationCommand command)
             => Ok(await _mediator.Send(command));
 
         /// <summary>Your applications: status, number, deposit and, after the sale, the purchase offer with the amount due.</summary>
         [HttpGet("my")]
+        [ProducesResponseType<ResponseModel<List<MyParticipationViewModel>>>(200)]
         public async Task<IActionResult> GetMy()
             => Ok(await _mediator.Send(new GetMyParticipationsQuery(), HttpContext.RequestAborted));
 
         /// <summary>Staff: applications. Filters: <c>Filters[auctionId.equals]=...</c>, <c>Filters[status.equals]=PENDING</c>.</summary>
         [Authorize(Policy = nameof(AuctionParticipantActions.READ_AUCTIONPARTICIPANT))]
         [HttpGet("list")]
+        [ProducesResponseType<ResponseModel<List<ParticipantAdminViewModel>>>(200)]
         public async Task<IActionResult> GetAll([FromQuery] GetParticipantListQuery query)
             => Ok(await _mediator.Send(query, HttpContext.RequestAborted));
 
         /// <summary>Approves a pending application: gives the participant number (and a zero deposit counts as paid).</summary>
         [Authorize(Policy = nameof(AuctionParticipantActions.UPDATE_AUCTIONPARTICIPANT))]
         [HttpPost("approve")]
+        [ProducesResponseType<ResponseModel<ParticipantAdminViewModel>>(200)]
         public async Task<IActionResult> Approve([FromBody] ApproveParticipantCommand command)
             => Ok(await _mediator.Send(command));
 
         /// <summary>Rejects an application (pending or approved) with a reason the applicant sees; a paid deposit is queued for refund.</summary>
         [Authorize(Policy = nameof(AuctionParticipantActions.UPDATE_AUCTIONPARTICIPANT))]
         [HttpPost("reject")]
+        [ProducesResponseType<ResponseModel<ParticipantAdminViewModel>>(200)]
         public async Task<IActionResult> Reject([FromBody] RejectParticipantCommand command)
             => Ok(await _mediator.Send(command));
 
@@ -74,11 +84,13 @@ namespace WebApi.Controllers
         /// pay the price less the deposit with POST api/Payment/checkout (purpose FINAL_PAYMENT).
         /// </summary>
         [HttpPost("offer/accept")]
+        [ProducesResponseType<ResponseModel<bool>>(200)]
         public async Task<IActionResult> AcceptOffer([FromBody] AcceptOfferCommand command)
             => Ok(await _mediator.Send(command));
 
         /// <summary>The runner-up declines the offer; the deposit is queued for refund and the sale ends unsold.</summary>
         [HttpPost("offer/decline")]
+        [ProducesResponseType<ResponseModel<bool>>(200)]
         public async Task<IActionResult> DeclineOffer([FromBody] DeclineOfferCommand command)
             => Ok(await _mediator.Send(command));
 
@@ -87,6 +99,7 @@ namespace WebApi.Controllers
         /// auction offers it. Not reversible.
         /// </summary>
         [HttpPost("refuse")]
+        [ProducesResponseType<ResponseModel<bool>>(200)]
         public async Task<IActionResult> Refuse([FromBody] RefuseAwardCommand command)
             => Ok(await _mediator.Send(command));
     }

@@ -9,6 +9,8 @@ using Application.Messaging;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebApi.Controllers.Abstractions;
+using Application.Models.Results;
+using Application.Models.ViewModels.UserRolePermisions;
 
 namespace WebApi.Controllers
 {
@@ -25,6 +27,7 @@ namespace WebApi.Controllers
 
         [Authorize(Policy = nameof(UserRolePermissionActions.CREATE_USERROLEPERMISSION))]
         [HttpPost]
+        [ProducesResponseType<ResponseModel<UserRolePermissionViewModel>>(200)]
         public override async Task<IActionResult> Post([FromForm] CreateUserRolePermissionCommand command)
         {
             return await base.Post(command);
@@ -39,6 +42,7 @@ namespace WebApi.Controllers
 
         [Authorize(Policy = nameof(UserRolePermissionActions.DELETE_USERROLEPERMISSION))]
         [HttpDelete]
+        [ProducesResponseType<ResponseModel<bool>>(200)]
         public override async Task<IActionResult> Delete(DeleteUserRolePermissionCommand command)
         {
             return await base.Delete(command);
@@ -46,6 +50,7 @@ namespace WebApi.Controllers
 
         [Authorize(Policy = nameof(UserRolePermissionActions.READ_USERROLEPERMISSION))]
         [HttpGet]
+        [ProducesResponseType<ResponseModel<UserRolePermissionViewModel>>(200)]
         public override async Task<IActionResult> Get([FromQuery] GetOneUserRolePermissionQuery request)
         {
             return await base.Get(request);
@@ -53,6 +58,7 @@ namespace WebApi.Controllers
 
         [Authorize(Policy = nameof(UserRolePermissionActions.READ_USERROLEPERMISSION))]
         [HttpGet("list")]
+        [ProducesResponseType<ResponseModel<List<UserRolePermissionViewModel>>>(200)]
         public override async Task<IActionResult> GetAll([FromQuery] GetUserRolePermissionListQuery request)
         {
             return await base.GetAll(request);
@@ -60,6 +66,7 @@ namespace WebApi.Controllers
 
         [Authorize(Policy = nameof(UserRolePermissionActions.READ_USERROLEPERMISSION))]
         [HttpGet("all-permissions")]
+        [ProducesResponseType<IReadOnlyCollection<string>>(200)]
         public async Task<IActionResult> GetAllPermissions()
         {
             var result = await _permissionService.GetAllPermission();

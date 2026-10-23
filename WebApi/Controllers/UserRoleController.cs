@@ -8,6 +8,8 @@ using Application.Messaging;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebApi.Controllers.Abstractions;
+using Application.Models.Results;
+using Application.Models.ViewModels.UserRoles;
 
 namespace WebApi.Controllers
 {
@@ -22,6 +24,7 @@ namespace WebApi.Controllers
     {
         [Authorize(Policy = nameof(UserRoleActions.CREATE_USERROLE))]
         [HttpPost]
+        [ProducesResponseType<ResponseModel<UserRoleViewModel>>(200)]
         public override async Task<IActionResult> Post([FromForm] CreateUserRoleCommand command)
         {
             return await base.Post(command);
@@ -29,6 +32,7 @@ namespace WebApi.Controllers
 
         [Authorize(Policy = nameof(UserRoleActions.UPDATE_USERROLE))]
         [HttpPut]
+        [ProducesResponseType<ResponseModel<UserRoleViewModel>>(200)]
         public override async Task<IActionResult> Put([FromForm] UpdateUserRoleCommand command)
         {
             return await base.Put(command);
@@ -36,6 +40,7 @@ namespace WebApi.Controllers
 
         [Authorize(Policy = nameof(UserRoleActions.DELETE_USERROLE))]
         [HttpDelete]
+        [ProducesResponseType<ResponseModel<bool>>(200)]
         public override async Task<IActionResult> Delete(DeleteUserRoleCommand command)
         {
             return await base.Delete(command);
@@ -43,6 +48,7 @@ namespace WebApi.Controllers
 
         [Authorize(Policy = nameof(UserRoleActions.READ_USERROLE))]
         [HttpGet]
+        [ProducesResponseType<ResponseModel<UserRoleViewModel>>(200)]
         public override async Task<IActionResult> Get([FromQuery] GetOneUserRoleQuery request)
         {
             return await base.Get(request);
@@ -50,6 +56,7 @@ namespace WebApi.Controllers
 
         [Authorize(Policy = nameof(UserRoleActions.READ_USERROLE))]
         [HttpGet("list")]
+        [ProducesResponseType<ResponseModel<List<UserRoleViewModel>>>(200)]
         public override async Task<IActionResult> GetAll([FromQuery] GetUserRoleListQuery request)
         {
             return await base.GetAll(request);
