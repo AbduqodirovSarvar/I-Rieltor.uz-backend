@@ -11,3 +11,7 @@ services:
     build:
       context: ../I-Rieltor.uz-admin
       dockerfile: Dockerfile.local
+  web:
+    build:
+      context: ../I-rieltor.uz-web
+      dockerfile: Dockerfile.local

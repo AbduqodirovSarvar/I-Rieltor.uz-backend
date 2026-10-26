@@ -33,6 +33,16 @@ if (Test-Path $admin) {
     if ($adminExit -ne 0) { throw "admin build failed." }
 }
 
+# And the public site (Node server + browser files).
+$web = Join-Path (Get-Location) "..\I-rieltor.uz-web"
+if (Test-Path $web) {
+    Push-Location $web
+    npx ng build
+    $webExit = $LASTEXITCODE
+    Pop-Location
+    if ($webExit -ne 0) { throw "web build failed." }
+}
+
 docker compose @compose up -d --build
 if ($LASTEXITCODE -ne 0) { throw "docker compose up failed." }
 
@@ -40,4 +50,5 @@ $port = if ($env_text -match "(?m)^\s*HTTP_PORT=(\d+)") { $Matches[1] } else { "
 Write-Host "`nAPI through Nginx: http://localhost:$port/api/slide/public   health: http://localhost:$port/health/ready"
 $adminPort = if ($env_text -match "(?m)^\s*ADMIN_PORT=(\d+)") { $Matches[1] } else { "8081" }
 Write-Host "Admin panel: http://localhost:$adminPort"
+Write-Host "Public site (through Nginx): http://localhost:$port/"
 Write-Host "Logs: docker compose $($compose -join ' ') logs -f api"

@@ -131,6 +131,8 @@ services:
     depends_on:
       api:
         condition: service_healthy
+      web:
+        condition: service_healthy
     networks:
       backend:
         ipv4_address: 172.30.0.10
@@ -145,6 +147,24 @@ services:
     logging: *default-logging
     ports:
       - "0.0.0.0:${ADMIN_PORT:-8081}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - backend
+
+  # The public site (../I-rieltor.uz-web): Node server that renders pages. Nginx sends everything except /api, /hubs, /uploads
+  # and /health to it; it reaches the API directly inside the network (no per-IP limit between the two).
+  web:
+    build:
+      context: ../I-rieltor.uz-web
+    image: irieltor-web
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      API_INTERNAL_URL: http://api:8080
+      # Extra hosts pictures may be loaded from, when file addresses from the API point to another host (space separated).
+      CSP_IMAGE_HOSTS: ${CSP_IMAGE_HOSTS:-}
     depends_on:
       api:
         condition: service_healthy
