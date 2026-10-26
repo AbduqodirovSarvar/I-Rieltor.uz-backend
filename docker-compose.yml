@@ -163,6 +163,9 @@ services:
     logging: *default-logging
     environment:
       API_INTERNAL_URL: http://api:8080
+      # Host names the site answers to (anything else gets 400: Angular checks the Host header). `web` is for checks made
+      # from inside the network. Add more names (www.) separated by commas.
+      NG_ALLOWED_HOSTS: ${SERVER_NAME:-localhost},web
       # Extra hosts pictures may be loaded from, when file addresses from the API point to another host (space separated).
       CSP_IMAGE_HOSTS: ${CSP_IMAGE_HOSTS:-}
     depends_on:

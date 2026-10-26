@@ -38,6 +38,9 @@ namespace Infrastructure.Extensions
             services.AddOptions<EmailConfirmationConfiguration>().Bind(configuration.GetSection(EmailConfirmationConfiguration.SectionName))
                     .ValidateDataAnnotations().ValidateOnStart();
             services.AddSingleton<IEmailConfirmationTokenService, EmailConfirmationTokenService>();
+            services.AddOptions<PasswordResetConfiguration>().Bind(configuration.GetSection(PasswordResetConfiguration.SectionName))
+                    .ValidateDataAnnotations().ValidateOnStart();
+            services.AddSingleton<IPasswordResetTokenService, PasswordResetTokenService>();
             services.AddScoped<IPermissionService, PermissionService>();
             services.AddOptions<EimzoConfiguration>().Bind(configuration.GetSection(EimzoConfiguration.SectionName))
                     .ValidateDataAnnotations().ValidateOnStart();

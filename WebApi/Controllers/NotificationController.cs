@@ -15,6 +15,17 @@ namespace WebApi.Controllers
     public class NotificationController(IMediator mediator) : BaseController(mediator)
     {
         /// <summary>
+        /// The signed-in user's own messages (what was e-mailed or texted to them), newest first, at most 50.
+        /// </summary>
+        [HttpGet("my")]
+        [ProducesResponseType<ResponseModel<List<MyNotificationViewModel>>>(200)]
+        public async Task<IActionResult> GetMine()
+        {
+            Response.Headers.CacheControl = "no-store";
+            return Ok(await _mediator.Send(new GetMyNotificationsQuery(), HttpContext.RequestAborted));
+        }
+
+        /// <summary>
         /// The delivery log, newest first. Filters, e.g. <c>Filters[status.equals]=FAILED</c>.
         /// </summary>
         [Authorize(Policy = nameof(NotificationActions.READ_NOTIFICATION))]

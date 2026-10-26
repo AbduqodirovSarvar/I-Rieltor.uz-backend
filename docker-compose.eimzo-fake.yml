@@ -1,0 +1,20 @@
+# LOCAL TESTING ONLY: a stand-in for E-IMZO-SERVER, so sign-in, sign-up and applications with E-IMZO can be tried without the
+# real server and its contract. It accepts fake signatures ("SIGNED|challenge|pinfl|..."), so it must never be used on a real site.
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml -f docker-compose.eimzo-fake.yml up -d
+# The API reaches it at http://e-imzo-server:8080 (the Eimzo__BaseUrl in .env.example); the override below makes sure of it.
+services:
+  e-imzo-server:
+    image: python:3.13-alpine
+    restart: unless-stopped
+    command: ["python", "/app/fake_eimzo_server.py", "8080", "0.0.0.0"]
+    volumes:
+      - ../development/tools/fake_eimzo_server.py:/app/fake_eimzo_server.py:ro
+    networks:
+      - backend
+  api:
+    environment:
+      Eimzo__BaseUrl: http://e-imzo-server:8080
+      Eimzo__SiteHost: localhost
+      # The end-to-end tests of the site sign in and up many times a minute; the normal limit is 10.
+      RateLimiting__AuthPermitPerMinute: "1000"
+      RateLimiting__SessionPermitPerMinute: "1000"

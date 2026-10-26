@@ -32,6 +32,12 @@ namespace Application.Interfaces.Auths
         Task<bool> ResendEmailConfirmationAsync(CancellationToken cancellationToken);
         Task<bool> ConfirmEmailAsync(string token, CancellationToken cancellationToken);
 
+        /// <summary>Sends a reset link to a confirmed email. Always completes the same way, known address or not.</summary>
+        Task ForgotPasswordAsync(string email, CancellationToken cancellationToken);
+
+        /// <summary>Sets a new password with the token from the emailed link and ends every session of the user.</summary>
+        Task<bool> ResetPasswordAsync(string token, string newPassword, CancellationToken cancellationToken);
+
         /// <summary>
         /// Links the E-IMZO key that signed the challenge to the signed-in login/password account (PINFL or INN,
         /// type, organisation name). Returns the updated profile.

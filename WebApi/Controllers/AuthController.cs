@@ -8,6 +8,7 @@ using Application.Features.Auths.Queries.CurrentUser;
 using Application.Features.Auths.Commands.Register;
 using Application.Features.Auths.Commands.RegisterViaEimzo;
 using Application.Features.Auths.Commands.EmailConfirmation;
+using Application.Features.Auths.Commands.ForgotPassword;
 using Application.Features.Auths.Commands.ResetViaEimzo;
 using Application.Features.Auths.Commands.UpdateProfile;
 using Application.Features.Auths.Queries.EimzoChallenge;
@@ -258,6 +259,30 @@ namespace WebApi.Controllers
         public async Task<IActionResult> ResendEmailConfirmation()
         {
             var result = await _mediator.Send(new ResendEmailConfirmationCommand());
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Password reset by email (for accounts with a confirmed email). Always answers 200, so it cannot be used to find
+        /// out which addresses are registered.
+        /// </summary>
+        [HttpPost("forgot-password")]
+        [ProducesResponseType<ResponseModel<bool>>(200)]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordCommand command)
+        {
+            var result = await _mediator.Send(command);
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Called by the frontend page the reset link opens: the token from the link and the new password. The link works
+        /// once; every session of the user ends.
+        /// </summary>
+        [HttpPost("reset-password")]
+        [ProducesResponseType<ResponseModel<bool>>(200)]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordCommand command)
+        {
+            var result = await _mediator.Send(command);
             return Ok(result);
         }
 

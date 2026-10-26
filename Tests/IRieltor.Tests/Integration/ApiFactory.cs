@@ -56,6 +56,7 @@ namespace IRieltor.Tests.Integration
                 ["JWTConfiguration__Secret"] = Convert.ToBase64String(RandomNumberGenerator.GetBytes(48)),
                 ["DefaultAdmin__Password"] = AdminPassword,
                 ["DefaultAdmin__Email"] = "admin@tests.local",
+                ["Contact__Email"] = "office@tests.local",
                 // Nothing listens there: confirmation emails fail fast (logged), no real mail leaves a test run.
                 ["Smtp__Host"] = "127.0.0.1",
                 ["Smtp__Port"] = "9",

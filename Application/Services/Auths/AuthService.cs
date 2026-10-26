@@ -34,6 +34,7 @@ namespace Application.Services.Auths
         IRefreshTokenRepository refreshTokenRepository,
         ICurrentUserService currentUserService,
         IEmailConfirmationTokenService emailConfirmationTokenService,
+        IPasswordResetTokenService passwordResetTokenService,
         IUnitOfWork unitOfWork,
         IRedisService redisService
         ) : IAuthService
@@ -58,6 +59,7 @@ namespace Application.Services.Auths
         private readonly IRefreshTokenRepository _refreshTokenRepository = refreshTokenRepository;
         private readonly ICurrentUserService _currentUserService = currentUserService;
         private readonly IEmailConfirmationTokenService _emailConfirmationTokenService = emailConfirmationTokenService;
+        private readonly IPasswordResetTokenService _passwordResetTokenService = passwordResetTokenService;
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly IRedisService _redisService = redisService;
 
@@ -487,6 +489,66 @@ namespace Application.Services.Auths
                 await _userRepository.UpdateAsync(user, cancellationToken);
             }
             return true;
+        }
+
+        private static readonly TimeSpan ResetEmailCooldown = TimeSpan.FromMinutes(2);
+        private const int ResetEmailsPerDay = 5;
+        private const string InvalidResetLinkMessage = "The reset link is invalid or has expired. Ask for a new one.";
+
+        public async Task ForgotPasswordAsync(string email, CancellationToken cancellationToken)
+        {
+            var normalized = email.Trim().ToLower();
+            var user = await _userRepository.GetAsync(
+                x => x.Email != null && x.Email.ToLower() == normalized && x.EmailConfirmedAt != null,
+                cancellationToken);
+            // Nothing tells the caller whether the address is known: no account, an unconfirmed email and a limit that
+            // is reached all end the same way as a sent mail.
+            if (user == null || string.IsNullOrEmpty(user.PasswordHash))
+                return;
+
+            if (!await _redisService.TryAcquireAsync($"v1:pwreset:cooldown:{user.Id}", ResetEmailCooldown))
+                return;
+            if (await _redisService.IncrementAsync($"v1:pwreset:day:{user.Id}:{DateTime.UtcNow:yyyyMMdd}", TimeSpan.FromDays(1)) > ResetEmailsPerDay)
+                return;
+
+            try
+            {
+                var (url, expiresAt) = _passwordResetTokenService.CreateLink(user.Id, user.PasswordHash);
+                var minutes = Math.Max(1, (int)Math.Round((expiresAt - DateTime.UtcNow).TotalMinutes));
+                var body = HtmlEmailBody.FromTemplate(EmailTemplates.PasswordReset, new Dictionary<string, string?>
+                {
+                    ["name"] = user.FullName,
+                    ["link"] = url,
+                    ["minutes"] = minutes.ToString()
+                });
+                await _emailService.SendEmailAsync(user.Email!, EmailTemplates.PasswordResetSubject, body, cancellationToken);
+            }
+            catch (ServiceUnavailableException)
+            {
+                // The mail server is down or the link is not configured: the person can ask again, and the answer
+                // must not differ from the one for an unknown address.
+                await _redisService.RemoveAsync($"v1:pwreset:cooldown:{user.Id}");
+            }
+        }
+
+        public async Task<bool> ResetPasswordAsync(string token, string newPassword, CancellationToken cancellationToken)
+        {
+            if (!_passwordResetTokenService.TryValidate(token, out var userId, out var fingerprint))
+                throw new BadRequestException(InvalidResetLinkMessage);
+
+            var user = await _userRepository.GetAsync(x => x.Id == userId, cancellationToken);
+            if (user == null || string.IsNullOrEmpty(user.PasswordHash)
+                || !string.Equals(_passwordResetTokenService.Fingerprint(user.PasswordHash), fingerprint, StringComparison.Ordinal))
+                throw new BadRequestException(InvalidResetLinkMessage);
+
+            user.PasswordHash = _hashService.Hash(newPassword);
+            return await _unitOfWork.ExecuteAsync(async () =>
+            {
+                var updated = await _userRepository.UpdateAsync(user, cancellationToken) != null;
+                // Whoever held the old password, or the stolen mailbox, must not stay signed in.
+                await _refreshTokenRepository.RevokeAllActiveAsync(user.Id, DateTime.UtcNow, cancellationToken);
+                return updated;
+            }, cancellationToken);
         }
 
         public async Task<UserViewModel> LinkEimzoAsync(string signedData, CancellationToken cancellationToken)
