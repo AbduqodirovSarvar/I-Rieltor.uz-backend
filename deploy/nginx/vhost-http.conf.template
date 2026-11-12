@@ -1,0 +1,17 @@
+# A second host (API, admin panel, presentation) until there is a certificate. run-nginx.sh fills in ${VHOST_NAME} and
+# ${VHOST_LOCATIONS} and appends the result to the site's own server block.
+server {
+    listen 80;
+    server_name ${VHOST_NAME};
+    access_log /var/log/nginx/access.log main_with_id;
+
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options DENY always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    include /opt/nginx/${VHOST_LOCATIONS};
+}

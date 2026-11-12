@@ -5,8 +5,9 @@
 #   2. docker compose up -d --build
 #   3. http://localhost (or HTTP_PORT); the API applies its migrations and seeds SUPER_ADMIN on start
 #
-# HTTPS (T-32): set SERVER_NAME (the API's domain, DNS pointing at this server) and LETSENCRYPT_EMAIL in .env,
-# open ports 80 and 443. certbot gets the certificate within a minute or two and Nginx switches to HTTPS by itself;
+# HTTPS (T-32): set SERVER_NAME (the auction site's domain; the site also serves the API under /api), optionally
+# API_SERVER_NAME, ADMIN_SERVER_NAME and PRESENTATION_SERVER_NAME (their own hosts), and LETSENCRYPT_EMAIL in .env; DNS of every name points at this server;
+# open ports 80 and 443. One certificate covers all the names. certbot gets the certificate within a minute or two and Nginx switches to HTTPS by itself;
 # until then (and on a developer machine without those values) Nginx serves plain HTTP.
 #
 # Backups (T-33): the "backup" service writes a database dump and a files archive every day to BACKUP_DIR
@@ -121,6 +122,9 @@ services:
       - "0.0.0.0:${HTTPS_PORT:-443}:443"
     environment:
       SERVER_NAME: ${SERVER_NAME:-}
+      API_SERVER_NAME: ${API_SERVER_NAME:-}
+      ADMIN_SERVER_NAME: ${ADMIN_SERVER_NAME:-}
+      PRESENTATION_SERVER_NAME: ${PRESENTATION_SERVER_NAME:-}
     # Chooses HTTP or HTTPS by whether the certificate exists, and reloads when certbot renews it.
     entrypoint: ["/bin/sh", "/opt/nginx/run-nginx.sh"]
     volumes:
@@ -138,7 +142,9 @@ services:
         ipv4_address: 172.30.0.10
 
   # The admin panel (../I-Rieltor.uz-admin): static files plus a proxy to the API, so it is one origin and needs no CORS.
-  # http://localhost:${ADMIN_PORT:-8082}. For HTTPS, put it behind the same kind of certificate setup as the API.
+  # On a server it is reached through Nginx at https://ADMIN_SERVER_NAME (with the same certificate); its own port is bound
+  # to 127.0.0.1 only (ADMIN_BIND), so the panel is never served over plain HTTP from outside. On a developer machine:
+  # http://localhost:${ADMIN_PORT:-8082}.
   admin:
     build:
       context: ../I-Rieltor.uz-admin
@@ -146,7 +152,7 @@ services:
     restart: unless-stopped
     logging: *default-logging
     ports:
-      - "0.0.0.0:${ADMIN_PORT:-8082}:80"
+      - "${ADMIN_BIND:-127.0.0.1}:${ADMIN_PORT:-8082}:80"
     depends_on:
       api:
         condition: service_healthy
@@ -182,6 +188,9 @@ services:
     entrypoint: ["/bin/sh", "/opt/renew/renew.sh"]
     environment:
       SERVER_NAME: ${SERVER_NAME:-}
+      API_SERVER_NAME: ${API_SERVER_NAME:-}
+      ADMIN_SERVER_NAME: ${ADMIN_SERVER_NAME:-}
+      PRESENTATION_SERVER_NAME: ${PRESENTATION_SERVER_NAME:-}
       LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL:-}
       LETSENCRYPT_STAGING: ${LETSENCRYPT_STAGING:-0}
     volumes:

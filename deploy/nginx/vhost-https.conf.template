@@ -1,0 +1,25 @@
+# A second host (API, admin panel, presentation) once the certificate exists: HTTP redirects to HTTPS. run-nginx.sh fills in
+# ${VHOST_NAME} and ${VHOST_LOCATIONS}.
+server {
+    listen 80;
+    server_name ${VHOST_NAME};
+    access_log /var/log/nginx/access.log main_with_id;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ${VHOST_NAME};
+    access_log /var/log/nginx/access.log main_with_id;
+
+    include /opt/nginx/tls-common.conf;
+    include /opt/nginx/${VHOST_LOCATIONS};
+}

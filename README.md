@@ -26,14 +26,17 @@ Faqat Nginx tashqariga ochiq. API sog'lom (`/health/ready`) bo'lmaguncha Nginx i
 
 TLS Nginx'da tugaydi, sertifikat Let's Encrypt'dan olinadi (`certbot` servisi).
 
-1. API domenining DNS A yozuvi shu serverga qarasin, 80 va 443 portlar ochiq bo'lsin.
-2. `.env`da: `SERVER_NAME=api.i-rieltor.uz` va `LETSENCRYPT_EMAIL=...`.
+1. Domenlarning DNS A yozuvlari shu serverga qarasin, 80 va 443 portlar ochiq bo'lsin.
+2. `.env`da: `SERVER_NAME=auksion.i-rieltor.uz` (auksion sayti; API ham shu domenda `/api` ostida), ixtiyoriy
+   `API_SERVER_NAME=api.i-rieltor.uz`, `ADMIN_SERVER_NAME=admin.i-rieltor.uz` va `PRESENTATION_SERVER_NAME=i-rieltor.uz`,
+   hamda `LETSENCRYPT_EMAIL=...`.
+   Hamma nomlarni bitta sertifikat qamraydi. Nom keyinroq qo'shilsa: `docker compose restart certbot`.
 3. `docker compose up -d`. Sertifikat bir-ikki daqiqada olinadi, Nginx o'zi HTTPS'ga o'tadi:
    - 80-port endi faqat sertifikat tekshiruviga javob beradi, qolgan hamma so'rovni 301 bilan HTTPS'ga yo'naltiradi;
    - HSTS yoqiladi (1 yil).
 4. Yangilash avtomatik: certbot har 12 soatda tekshiradi, Nginx yangi sertifikatni bir daqiqa ichida qayta yuklaydi.
 
-Birinchi urinishda `LETSENCRYPT_STAGING=1` qo'yish mumkin. Bunda Let's Encrypt'ning test sertifikati olinadi: brauzer unga ishonmaydi, lekin limitlar yo'q. Ishlaganini ko'rgach, uni olib tashlang va staging sertifikatni o'chiring: `docker compose run --rm --entrypoint certbot certbot delete --cert-name api.i-rieltor.uz`. Keyin `docker compose up -d`.
+Birinchi urinishda `LETSENCRYPT_STAGING=1` qo'yish mumkin. Bunda Let's Encrypt'ning test sertifikati olinadi: brauzer unga ishonmaydi, lekin limitlar yo'q. Ishlaganini ko'rgach, uni olib tashlang va staging sertifikatni o'chiring: `docker compose run --rm --entrypoint certbot certbot delete --cert-name auksion.i-rieltor.uz` (`SERVER_NAME` qiymati). Keyin `docker compose up -d`.
 
 `SERVER_NAME` yoki `LETSENCRYPT_EMAIL` bo'sh bo'lsa, Nginx oddiy HTTP'da qoladi. Bu dasturchi kompyuteri uchun. Holatni ko'rish: `docker compose logs nginx certbot`.
 
