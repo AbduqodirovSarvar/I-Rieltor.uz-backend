@@ -372,3 +372,6 @@ WebApi/wwwroot/deleted/
 # Database and file backups (docker compose "backup" service): personal data, never in git
 backups/
 publish-local/
+
+# deploy/backup holds the backup container's script, not a Visual Studio backup folder (Backup*/ above)
+!deploy/backup/
